@@ -1,0 +1,17 @@
+{
+  "app.name": "SWARAJ",
+  "auth.phone": "Mobile number",
+  "auth.otp": "OTP",
+  "auth.send": "Send OTP",
+  "auth.verify": "Verify",
+  "onboarding.title": "Learn democracy by doing",
+  "dashboard.title": "Your civic journey",
+  "modules.title": "Learning modules",
+  "quiz.title": "Quiz",
+  "challenge.title": "Daily civic challenge",
+  "debate.title": "Debate arena",
+  "ai.title": "Explain simply",
+  "leaderboard.title": "School leaderboard",
+  "profile.title": "Profile",
+  "certificate.title": "Certified Young Civic Leader"
+}

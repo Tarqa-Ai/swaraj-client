@@ -1,0 +1,362 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum Language {
+  en
+  hi
+}
+
+enum LessonType {
+  TEXT
+  IMAGE
+  INFOGRAPHIC
+}
+
+enum QuizQuestionType {
+  MCQ
+  TRUE_FALSE
+  MATCH_COLUMN
+}
+
+enum ChallengeCategory {
+  INDIA_TODAY
+  PARLIAMENT_WATCH
+  CIVIC_AWARENESS
+}
+
+enum DebateSide {
+  FOR
+  AGAINST
+}
+
+enum PoliticalIQReason {
+  LESSON_COMPLETION
+  MODULE_COMPLETION
+  QUIZ_SCORE
+  DAILY_CHALLENGE
+  STREAK
+  DEBATE
+  CERTIFICATE
+}
+
+model User {
+  id                    String                     @id @default(cuid())
+  phone                 String                     @unique
+  name                  String?
+  grade                 Int?
+  language              Language                   @default(en)
+  role                  UserRole                   @default(STUDENT)
+  schoolId              String?
+  school                School?                    @relation(fields: [schoolId], references: [id])
+  politicalIq           Int                        @default(0)
+  streakCount           Int                        @default(0)
+  lastChallengeDate     DateTime?
+  refreshTokenHash      String?
+  onboardingCompletedAt DateTime?
+  lessonProgress        LessonProgress[]
+  moduleProgress        ModuleProgress[]
+  quizSubmissions       QuizSubmission[]
+  dailySubmissions      DailyChallengeSubmission[]
+  debateResponses       DebateResponse[]
+  iqLogs                PoliticalIQLog[]
+  achievements          UserAchievement[]
+  certificates          Certificate[]
+  otpChallenges         OtpChallenge[]
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  deletedAt             DateTime?
+
+  @@index([schoolId, politicalIq])
+  @@index([role])
+  @@index([deletedAt])
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         UserRole  @default(ADMIN)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+}
+
+model School {
+  id        String    @id @default(cuid())
+  name      String
+  district  String
+  state     String    @default("Rajasthan")
+  code      String    @unique
+  users     User[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([district])
+  @@index([deletedAt])
+}
+
+model Module {
+  id             String           @id @default(cuid())
+  slug           String           @unique
+  titleEn        String
+  titleHi        String
+  descriptionEn  String
+  descriptionHi  String
+  illustrationUrl String?
+  order          Int
+  estimatedMinutes Int            @default(15)
+  lessons        Lesson[]
+  quizzes        Quiz[]
+  progress       ModuleProgress[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+
+  @@index([order])
+  @@index([deletedAt])
+}
+
+model Lesson {
+  id             String           @id @default(cuid())
+  moduleId       String
+  module         Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  type           LessonType
+  titleEn        String
+  titleHi        String
+  bodyEn         String
+  bodyHi         String
+  mediaUrl       String?
+  order          Int
+  progress       LessonProgress[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+
+  @@index([moduleId, order])
+  @@index([deletedAt])
+}
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+
+  @@unique([userId, lessonId])
+  @@index([lessonId])
+}
+
+model ModuleProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moduleId    String
+  module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+
+  @@unique([userId, moduleId])
+  @@index([moduleId])
+}
+
+model Quiz {
+  id          String         @id @default(cuid())
+  moduleId    String
+  module      Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  titleEn     String
+  titleHi     String
+  questions   QuizQuestion[]
+  submissions QuizSubmission[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+
+  @@index([moduleId])
+  @@index([deletedAt])
+}
+
+model QuizQuestion {
+  id             String           @id @default(cuid())
+  quizId         String
+  quiz           Quiz             @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  type           QuizQuestionType
+  promptEn       String
+  promptHi       String
+  options        Json
+  answer         Json
+  explanationEn  String
+  explanationHi  String
+  order          Int
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+
+  @@index([quizId, order])
+  @@index([deletedAt])
+}
+
+model QuizSubmission {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId     String
+  quiz       Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers    Json
+  score      Int
+  correct    Int
+  total      Int
+  createdAt  DateTime @default(now())
+
+  @@index([userId, quizId])
+  @@index([createdAt])
+}
+
+model DailyChallenge {
+  id          String                     @id @default(cuid())
+  challengeDate DateTime
+  category    ChallengeCategory
+  questions   Json
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+  deletedAt   DateTime?
+  submissions DailyChallengeSubmission[]
+
+  @@unique([challengeDate])
+  @@index([category])
+  @@index([deletedAt])
+}
+
+model DailyChallengeSubmission {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId String
+  challenge   DailyChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  answers     Json
+  score       Int
+  correct     Int
+  total       Int
+  createdAt   DateTime       @default(now())
+
+  @@unique([userId, challengeId])
+  @@index([createdAt])
+}
+
+model Debate {
+  id              String           @id @default(cuid())
+  topicEn         String
+  topicHi         String
+  forSummaryEn    String
+  forSummaryHi    String
+  againstSummaryEn String
+  againstSummaryHi String
+  isActive        Boolean          @default(false)
+  responses       DebateResponse[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
+
+  @@index([isActive])
+  @@index([deletedAt])
+}
+
+model DebateResponse {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  debateId   String
+  debate     Debate     @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  side       DebateSide
+  reflection String
+  createdAt  DateTime   @default(now())
+
+  @@unique([userId, debateId])
+  @@index([debateId])
+}
+
+model PoliticalIQLog {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points    Int
+  reason    PoliticalIQReason
+  metadata  Json?
+  createdAt DateTime          @default(now())
+
+  @@index([userId, createdAt])
+  @@index([reason])
+}
+
+model Achievement {
+  id          String            @id @default(cuid())
+  code        String            @unique
+  titleEn     String
+  titleHi     String
+  descriptionEn String
+  descriptionHi String
+  icon        String
+  users       UserAchievement[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  awardedAt      DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+}
+
+model Certificate {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  certificateUrl String
+  verificationCode String @unique
+  issuedAt       DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model OtpChallenge {
+  id          String    @id @default(cuid())
+  phone       String
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash    String
+  expiresAt   DateTime
+  attempts    Int       @default(0)
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([phone, createdAt])
+}
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  url       String
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime @default(now())
+}

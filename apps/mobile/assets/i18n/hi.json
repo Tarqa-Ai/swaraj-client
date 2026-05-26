@@ -1,0 +1,17 @@
+{
+  "app.name": "स्वराज",
+  "auth.phone": "मोबाइल नंबर",
+  "auth.otp": "ओटीपी",
+  "auth.send": "ओटीपी भेजें",
+  "auth.verify": "सत्यापित करें",
+  "onboarding.title": "करते हुए लोकतंत्र सीखें",
+  "dashboard.title": "आपकी नागरिक यात्रा",
+  "modules.title": "सीखने के मॉड्यूल",
+  "quiz.title": "क्विज",
+  "challenge.title": "दैनिक नागरिक चुनौती",
+  "debate.title": "वाद-विवाद मंच",
+  "ai.title": "सरल भाषा में समझें",
+  "leaderboard.title": "स्कूल लीडरबोर्ड",
+  "profile.title": "प्रोफाइल",
+  "certificate.title": "प्रमाणित युवा नागरिक नेता"
+}
