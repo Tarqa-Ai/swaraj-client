@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, BarChart3, BookOpen, Building2, FileBadge, HelpCircle, LayoutDashboard, LogOut, MessageSquare, Users } from "lucide-react";
+import { Award, BarChart3, BookOpen, Building2, Download, FileBadge, HelpCircle, LayoutDashboard, ListChecks, LogOut, MessageSquare, Star, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "./ui";
@@ -13,11 +13,15 @@ const nav = [
   { href: "/students", label: "Students", icon: Users },
   { href: "/schools", label: "Schools", icon: Building2 },
   { href: "/modules", label: "Modules", icon: BookOpen },
+  { href: "/lessons", label: "Lessons", icon: ListChecks },
   { href: "/quizzes", label: "Quizzes", icon: HelpCircle },
+  { href: "/quiz-questions", label: "Questions", icon: HelpCircle },
   { href: "/challenges", label: "Challenges", icon: Award },
   { href: "/debates", label: "Debates", icon: MessageSquare },
+  { href: "/achievements", label: "Achievements", icon: Star },
   { href: "/leaderboard", label: "Leaderboard", icon: BarChart3 },
-  { href: "/certificates", label: "Certificates", icon: FileBadge }
+  { href: "/certificates", label: "Certificates", icon: FileBadge },
+  { href: "/exports", label: "Exports", icon: Download }
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {

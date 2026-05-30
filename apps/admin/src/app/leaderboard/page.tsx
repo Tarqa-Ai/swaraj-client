@@ -1,5 +1,5 @@
-import { EmptyState } from "@/components/ui";
+import { ResourcePage } from "@/components/resource-page";
 
 export default function LeaderboardPage() {
-  return <EmptyState title="Leaderboard analytics" body="School-level leaderboard is exposed to students; admin rank exports can be added from the same API data." />;
+  return <ResourcePage title="Leaderboard" description="Top student rankings across schools." endpoint="/admin/leaderboard" columns={[{ key: "name", label: "Student" }, { key: "grade", label: "Grade" }, { key: "politicalIq", label: "Political IQ" }, { key: "streakCount", label: "Streak" }]} />;
 }

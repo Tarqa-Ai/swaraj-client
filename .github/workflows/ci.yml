@@ -8,6 +8,24 @@ on:
 jobs:
   web-and-api:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: swaraj
+          POSTGRES_PASSWORD: swaraj
+          POSTGRES_DB: swaraj_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://swaraj:swaraj@localhost:5432/swaraj_test?schema=public
+      JWT_ACCESS_SECRET: ci-access-secret-minimum-32-characters-long
+      JWT_REFRESH_SECRET: ci-refresh-secret-minimum-32-characters-long
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -21,6 +39,8 @@ jobs:
       - run: pnpm --filter @swaraj/backend prisma:generate
       - run: pnpm lint
       - run: pnpm test
+      - run: pnpm --filter @swaraj/backend exec prisma migrate deploy
+      - run: pnpm --filter @swaraj/backend test:integration
       - run: pnpm build
 
   mobile:

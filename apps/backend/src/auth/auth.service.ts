@@ -16,6 +16,18 @@ export class AuthService {
   ) {}
 
   async sendOtp(body: SendOtpBody) {
+    // Per-phone cooldown: reject if a challenge was created within the last 60 seconds
+    const recent = await this.prisma.otpChallenge.findFirst({
+      where: { phone: body.phone, createdAt: { gt: new Date(Date.now() - 60_000) } },
+      orderBy: { createdAt: "desc" }
+    });
+    if (recent) throw new BadRequestException("Wait 60 seconds before requesting a new OTP");
+
+    // Clean up expired challenges for this phone to prevent unbounded table growth
+    await this.prisma.otpChallenge.deleteMany({
+      where: { phone: body.phone, expiresAt: { lt: new Date() } }
+    });
+
     const code = randomInt(100000, 999999).toString();
     const codeHash = await bcrypt.hash(code, 10);
     const user = await this.prisma.user.findUnique({ where: { phone: body.phone } });
@@ -83,9 +95,14 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string) {
-    const payload = await this.jwtService.verifyAsync<{ id: string; role: UserRole }>(refreshToken, {
-      secret: process.env.JWT_REFRESH_SECRET
-    });
+    let payload: { id: string; role: UserRole };
+    try {
+      payload = await this.jwtService.verifyAsync<{ id: string; role: UserRole }>(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET
+      });
+    } catch {
+      throw new UnauthorizedException("Invalid refresh token");
+    }
 
     if (payload.role === UserRole.ADMIN) {
       const admin = await this.prisma.adminUser.findUnique({ where: { id: payload.id } });
@@ -94,22 +111,42 @@ export class AuthService {
     }
 
     const user = await this.prisma.user.findUnique({ where: { id: payload.id } });
-    if (!user || user.deletedAt) throw new UnauthorizedException();
+    if (!user || user.deletedAt || !user.refreshTokenHash) throw new UnauthorizedException("Invalid refresh token");
+    const valid = await bcrypt.compare(refreshToken, user.refreshTokenHash);
+    if (!valid) throw new UnauthorizedException("Invalid refresh token");
     return this.issueStudentTokens(user.id, user.phone);
+  }
+
+  async logout(userId: string, role: string) {
+    if (role === UserRole.STUDENT) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { refreshTokenHash: null }
+      });
+    }
+    return { loggedOut: true };
   }
 
   private async issueStudentTokens(id: string, phone: string) {
     const payload = { id, phone, role: UserRole.STUDENT };
+    const accessToken = await this.jwtService.signAsync(payload, {
+      secret: process.env.JWT_ACCESS_SECRET,
+      expiresIn: "15m"
+    });
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      secret: process.env.JWT_REFRESH_SECRET,
+      expiresIn: "30d"
+    });
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 12);
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: { refreshTokenHash },
+      include: { school: true }
+    });
     return {
-      user: await this.prisma.user.findUnique({ where: { id }, include: { school: true } }),
-      accessToken: await this.jwtService.signAsync(payload, {
-        secret: process.env.JWT_ACCESS_SECRET,
-        expiresIn: "15m"
-      }),
-      refreshToken: await this.jwtService.signAsync(payload, {
-        secret: process.env.JWT_REFRESH_SECRET,
-        expiresIn: "30d"
-      })
+      user,
+      accessToken,
+      refreshToken
     };
   }
 

@@ -75,7 +75,8 @@ export class DailyChallengeService {
       submissionId: submission.id
     });
 
-    return { submission, results };
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { streakCount: true } });
+    return { submission, results, score, correct, total, iqEarned: points, streakCount: user?.streakCount ?? 0 };
   }
 
   async history(userId: string) {

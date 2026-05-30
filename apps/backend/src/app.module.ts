@@ -15,6 +15,7 @@ import { PrismaModule } from "./prisma/prisma.module";
 import { ProfileModule } from "./profile/profile.module";
 import { QuizModule } from "./quiz/quiz.module";
 import { StorageModule } from "./storage/storage.module";
+import { HealthController } from "./health.controller";
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { StorageModule } from "./storage/storage.module";
     LeaderboardModule,
     CertificateModule,
     AdminModule
-  ]
+  ],
+  controllers: [HealthController]
 })
 export class AppModule {}

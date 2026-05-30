@@ -3,9 +3,16 @@ import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
 
+function assertRequiredEnv() {
+  const missing = ["JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET"].filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(", ")}. Set them before starting the server.`);
+  }
+}
+
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
-  app.use(helmet());
+  assertRequiredEnv();
+  const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix("api");
   app.enableCors({
     origin: process.env.ADMIN_ORIGIN?.split(",") ?? ["http://localhost:3000"],

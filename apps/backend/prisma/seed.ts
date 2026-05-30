@@ -3,6 +3,11 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+function todayUtc() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+
 async function main() {
   const schools = [
     { name: "Government Senior Secondary School, Jaipur", district: "Jaipur", code: "RJ-JAI-001" },
@@ -134,10 +139,10 @@ async function main() {
   }
 
   await prisma.dailyChallenge.upsert({
-    where: { challengeDate: new Date("2026-05-18T00:00:00.000Z") },
+    where: { challengeDate: todayUtc() },
     update: {},
     create: {
-      challengeDate: new Date("2026-05-18T00:00:00.000Z"),
+      challengeDate: todayUtc(),
       category: ChallengeCategory.CIVIC_AWARENESS,
       questions: [
         {

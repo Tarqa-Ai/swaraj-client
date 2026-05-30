@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../core/api/api_client.dart';
 import '../../../core/widgets/state_views.dart';
-
-final moduleDetailProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, id) => ref.read(apiClientProvider).get('/modules/$id'));
+import '../data/learning_repository.dart';
 
 class ModuleDetailScreen extends ConsumerWidget {
   const ModuleDetailScreen({required this.moduleId, super.key});
@@ -19,7 +18,8 @@ class ModuleDetailScreen extends ConsumerWidget {
         loading: () => const LoadingSkeleton(),
         error: (_, __) => const EmptyState(title: 'Module unavailable', body: 'Try another module.'),
         data: (module) {
-          final lessons = module['lessons'] as List<dynamic>;
+          final lessons = (module['lessons'] as List<dynamic>).cast<Map<String, dynamic>>();
+          final quizzes = (module['quizzes'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
@@ -27,10 +27,19 @@ class ModuleDetailScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(module['descriptionEn'] as String),
               const SizedBox(height: 20),
-              for (final item in lessons)
+              for (final lesson in lessons)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: LessonCard(lesson: item as Map<String, dynamic>),
+                  child: _LessonTile(lesson: lesson, moduleId: moduleId),
+                ),
+              for (final quiz in quizzes)
+                Card(
+                  child: ListTile(
+                    title: Text(quiz['titleEn'] as String),
+                    subtitle: Text('${(quiz['questions'] as List<dynamic>? ?? []).length} questions'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.go('/quiz/${quiz['id']}'),
+                  ),
                 ),
             ],
           );
@@ -40,31 +49,22 @@ class ModuleDetailScreen extends ConsumerWidget {
   }
 }
 
-class LessonCard extends ConsumerWidget {
-  const LessonCard({required this.lesson, super.key});
+class _LessonTile extends StatelessWidget {
+  const _LessonTile({required this.lesson, required this.moduleId});
+
   final Map<String, dynamic> lesson;
+  final String moduleId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final completed = lesson['completed'] as bool? ?? false;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(lesson['titleEn'] as String, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Text(lesson['bodyEn'] as String),
-            const SizedBox(height: 12),
-            FilledButton.tonal(
-              onPressed: () async {
-                await ref.read(apiClientProvider).post('/lessons/${lesson['id']}/complete', {});
-                ref.invalidate(moduleDetailProvider);
-              },
-              child: Text((lesson['completed'] as bool? ?? false) ? 'Completed' : 'Mark complete'),
-            ),
-          ],
-        ),
+      child: ListTile(
+        leading: Icon(completed ? Icons.check_circle : Icons.menu_book, color: completed ? Colors.green : null),
+        title: Text(lesson['titleEn'] as String),
+        subtitle: Text(completed ? 'Completed' : 'Tap to read'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.go('/modules/$moduleId/lessons/${lesson['id']}'),
       ),
     );
   }

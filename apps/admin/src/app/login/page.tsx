@@ -39,11 +39,11 @@ export default function LoginPage() {
         <form className="mt-6 space-y-4" onSubmit={submit}>
           <label className="block text-sm font-medium text-slate-700">
             Email
-            <Input name="email" type="email" required defaultValue="admin@swaraj.local" className="mt-1" />
+            <Input name="email" type="email" required className="mt-1" />
           </label>
           <label className="block text-sm font-medium text-slate-700">
             Password
-            <Input name="password" type="password" required defaultValue="ChangeMe123!" className="mt-1" />
+            <Input name="password" type="password" required className="mt-1" />
           </label>
           {error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
           <Button disabled={loading} className="w-full">

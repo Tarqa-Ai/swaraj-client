@@ -16,6 +16,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final otp = TextEditingController();
   bool sent = false;
   bool loading = false;
+  int resendSeconds = 0;
   String? error;
 
   @override
@@ -43,7 +44,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 onPressed: loading ? null : _submit,
                 child: Text(loading ? 'Please wait...' : sent ? 'Verify OTP' : 'Send OTP'),
               ),
-              TextButton(onPressed: () => context.go('/onboarding'), child: const Text('Continue to onboarding')),
+              if (sent)
+                TextButton(
+                  onPressed: loading || resendSeconds > 0 ? null : _resend,
+                  child: Text(resendSeconds > 0 ? 'Resend OTP in ${resendSeconds}s' : 'Resend OTP'),
+                ),
               const Spacer(),
             ],
           ),
@@ -61,15 +66,43 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       final repo = ref.read(authRepositoryProvider);
       if (!sent) {
         await repo.sendOtp(phone.text.trim());
-        setState(() => sent = true);
+        setState(() {
+          sent = true;
+          resendSeconds = 60;
+        });
+        _tickCooldown();
       } else {
-        await repo.verifyOtp(phone: phone.text.trim(), code: otp.text.trim());
-        if (mounted) context.go('/dashboard');
+        final user = await repo.verifyOtp(phone: phone.text.trim(), code: otp.text.trim());
+        if (!mounted) return;
+        context.go(user['onboardingCompletedAt'] == null ? '/onboarding' : '/dashboard');
       }
     } catch (err) {
       setState(() => error = err.toString());
     } finally {
       setState(() => loading = false);
+    }
+  }
+
+  Future<void> _resend() async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      await ref.read(authRepositoryProvider).sendOtp(phone.text.trim());
+      setState(() => resendSeconds = 60);
+      _tickCooldown();
+    } catch (err) {
+      setState(() => error = err.toString());
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  Future<void> _tickCooldown() async {
+    while (mounted && resendSeconds > 0) {
+      await Future<void>.delayed(const Duration(seconds: 1));
+      if (mounted) setState(() => resendSeconds--);
     }
   }
 }

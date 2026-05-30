@@ -45,6 +45,25 @@ export class CertificateService {
     });
   }
 
+  async verify(code: string) {
+    const certificate = await this.prisma.certificate.findUnique({
+      where: { verificationCode: code },
+      include: { user: { include: { school: true } } }
+    });
+    if (!certificate) throw new NotFoundException("Certificate not found");
+    return {
+      status: "valid",
+      verificationCode: certificate.verificationCode,
+      title: certificate.title,
+      student: {
+        id: certificate.user.id,
+        name: certificate.user.name,
+        school: certificate.user.school?.name ?? null
+      },
+      issuedAt: certificate.issuedAt
+    };
+  }
+
   private async createPdf(studentName: string, schoolName: string, verificationCode: string) {
     return new Promise<Buffer>((resolve) => {
       const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 48 });

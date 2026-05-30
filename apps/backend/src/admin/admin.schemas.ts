@@ -55,8 +55,47 @@ export const challengeSchema = z.object({
   ).length(3)
 });
 
+export const quizSchema = z.object({
+  moduleId: z.string().min(1),
+  titleEn: z.string().min(2),
+  titleHi: z.string().min(2)
+});
+
+export const quizQuestionSchema = z.object({
+  quizId: z.string().min(1),
+  type: z.enum(["MCQ", "TRUE_FALSE", "MATCH_COLUMN"]),
+  promptEn: z.string().min(2),
+  promptHi: z.string().min(2),
+  options: z.unknown(),
+  answer: z.unknown(),
+  explanationEn: z.string().min(2),
+  explanationHi: z.string().min(2),
+  order: z.number().int().positive()
+});
+
+export const achievementSchema = z.object({
+  code: z.string().min(3).regex(/^[A-Z_]+$/, "Code must be uppercase with underscores only"),
+  titleEn: z.string().min(2),
+  titleHi: z.string().min(2),
+  descriptionEn: z.string().min(2),
+  descriptionHi: z.string().min(2),
+  icon: z.string().min(1)
+});
+
+export const partialSchoolSchema = schoolSchema.partial();
+export const partialModuleSchema = moduleSchema.partial();
+export const partialLessonSchema = lessonSchema.partial();
+export const partialDebateSchema = debateSchema.partial();
+export const partialChallengeSchema = challengeSchema.partial();
+export const partialQuizSchema = quizSchema.partial();
+export const partialQuizQuestionSchema = quizQuestionSchema.partial();
+export const partialAchievementSchema = achievementSchema.partial();
+
 export type SchoolBody = z.infer<typeof schoolSchema>;
 export type ModuleBody = z.infer<typeof moduleSchema>;
 export type LessonBody = z.infer<typeof lessonSchema>;
 export type DebateBody = z.infer<typeof debateSchema>;
 export type ChallengeBody = z.infer<typeof challengeSchema>;
+export type QuizBody = z.infer<typeof quizSchema>;
+export type QuizQuestionBody = z.infer<typeof quizQuestionSchema>;
+export type AchievementBody = z.infer<typeof achievementSchema>;
