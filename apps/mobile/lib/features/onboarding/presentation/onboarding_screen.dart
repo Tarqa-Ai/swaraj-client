@@ -46,7 +46,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
-                initialValue: grade,
+                value: grade,
                 decoration: const InputDecoration(labelText: 'Grade'),
                 items: [9, 10, 11, 12].map((item) => DropdownMenuItem(value: item, child: Text('Grade $item'))).toList(),
                 onChanged: (value) => setState(() => grade = value ?? grade),
@@ -56,7 +56,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 loading: () => const LoadingSkeleton(),
                 error: (_, __) => const EmptyState(title: 'Schools unavailable', body: 'Try again when your connection is active.'),
                 data: (items) => DropdownButtonFormField<String>(
-                  initialValue: schoolId,
+                  value: schoolId,
                   decoration: const InputDecoration(labelText: 'School'),
                   items: items
                       .map((item) => item as Map<String, dynamic>)

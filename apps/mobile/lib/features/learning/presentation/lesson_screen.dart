@@ -74,7 +74,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                   child: Text(_marking ? 'Saving...' : 'Mark as complete'),
                 )
               else
-                FilledButton.tonal(onPressed: null, child: const Text('Completed')),
+                const FilledButton.tonal(onPressed: null, child: Text('Completed')),
             ],
           ),
         );
