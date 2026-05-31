@@ -1,3 +1,5 @@
+"use client";
+
 import { ResourcePage } from "@/components/resource-page";
 
 const challengeQuestionsExample = `[
@@ -34,11 +36,14 @@ export default function ChallengesPage() {
   return (
     <ResourcePage
       title="Daily Challenges"
-      description="Schedule one three-question civic challenge for a date."
+      recordLabel="challenge"
+      addLabel="Add challenge"
+      description="Schedule the three-question daily challenge used by the app. Keep one date-based challenge per day."
       endpoint="/admin/daily-challenges"
       columns={[
         { key: "challengeDate", label: "Date" },
-        { key: "category", label: "Category" }
+        { key: "category", label: "Category" },
+        { key: "questions", label: "Questions", render: (challenge) => Array.isArray(challenge.questions) ? challenge.questions.length : 0 }
       ]}
       fields={[
         { key: "challengeDate", label: "Date", type: "date", required: true },

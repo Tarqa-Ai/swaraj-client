@@ -4,8 +4,6 @@ import {
   Award,
   BarChart3,
   BookOpen,
-  Building2,
-  Download,
   FileBadge,
   HelpCircle,
   LayoutDashboard,
@@ -24,19 +22,17 @@ import clsx from "clsx";
 import { useEffect, useState } from "react";
 
 const nav = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/students", label: "Students", icon: Users },
-  { href: "/schools", label: "Schools", icon: Building2 },
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/students", label: "Citizens", icon: Users },
   { href: "/modules", label: "Modules", icon: BookOpen },
   { href: "/lessons", label: "Lessons", icon: ListChecks },
   { href: "/quizzes", label: "Quizzes", icon: HelpCircle },
   { href: "/quiz-questions", label: "Questions", icon: HelpCircle },
-  { href: "/challenges", label: "Challenges", icon: Award },
-  { href: "/debates", label: "Debates", icon: MessageSquare },
-  { href: "/achievements", label: "Achievements", icon: Star },
+  { href: "/challenges", label: "Daily Challenge", icon: Award },
+  { href: "/debates", label: "Active Debate", icon: MessageSquare },
   { href: "/leaderboard", label: "Leaderboard", icon: BarChart3 },
   { href: "/certificates", label: "Certificates", icon: FileBadge },
-  { href: "/exports", label: "Exports", icon: Download }
+  { href: "/achievements", label: "Badges", icon: Star }
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -68,7 +64,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <ShieldCheck size={18} className="text-saffron" />
             <p className="text-sm font-extrabold">SWARAJ App Admin</p>
           </div>
-          <p className="mt-2 text-xs leading-5 text-slate-600">Keep modules, lessons, quizzes, and citizen school data simple to manage.</p>
+          <p className="mt-2 text-xs leading-5 text-slate-600">Update learning content, quizzes, challenges, debates, and citizen records from one sober console.</p>
         </div>
 
         <nav className="mt-6 space-y-1.5">

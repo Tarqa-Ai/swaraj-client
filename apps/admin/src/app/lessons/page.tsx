@@ -28,7 +28,9 @@ export default function LessonsPage() {
   return (
     <ResourcePage<LessonItem>
       title="Lessons"
-      description="Create short lesson cards inside each learning module."
+      recordLabel="lesson"
+      addLabel="Add lesson"
+      description="Add, remove, and modify lesson content inside each module. These lessons feed module progress and Political IQ."
       endpoint="/admin/lessons"
       columns={[
         { key: "order", label: "Order" },

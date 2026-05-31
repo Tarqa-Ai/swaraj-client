@@ -1,9 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { api, del, patch, post } from "@/lib/api";
 import { Button, Card, EmptyState, Input, Skeleton, Textarea } from "./ui";
 
@@ -14,6 +14,11 @@ type ResourcePageProps<T extends Record<string, unknown>> = {
   columns: Array<{ key: string; label: string; render?: (item: T) => ReactNode }>;
   fields?: ResourceField[];
   deletable?: boolean;
+  createEnabled?: boolean;
+  addLabel?: string;
+  recordLabel?: string;
+  emptyTitle?: string;
+  emptyBody?: string;
 };
 
 type ResourceField = {
@@ -27,15 +32,31 @@ type ResourceField = {
   options?: Array<{ label: string; value: string }>;
 };
 
-export function ResourcePage<T extends Record<string, unknown>>({ title, description, endpoint, columns, fields = [], deletable = false }: ResourcePageProps<T>) {
+type ResourceResponse<T> = T[] | { items: T[]; total?: number; page?: number; limit?: number };
+
+export function ResourcePage<T extends Record<string, unknown>>({
+  title,
+  description,
+  endpoint,
+  columns,
+  fields = [],
+  deletable = false,
+  createEnabled = true,
+  addLabel,
+  recordLabel,
+  emptyTitle = "No records yet",
+  emptyBody = "Records will appear here once available."
+}: ResourcePageProps<T>) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<T | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const { data, isLoading, error } = useQuery({
     queryKey: [endpoint],
-    queryFn: () => api<T[] | { items: T[] }>(endpoint)
+    queryFn: () => api<ResourceResponse<T>>(endpoint)
   });
+
   const saveMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) => {
       if (editing?.id) return patch(`${endpoint}/${String(editing.id)}`, body);
@@ -49,12 +70,20 @@ export function ResourcePage<T extends Record<string, unknown>>({ title, descrip
     },
     onError: (err) => setErrorMessage(err instanceof Error ? err.message : "Save failed")
   });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => del(`${endpoint}/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [endpoint] })
   });
 
   const items = Array.isArray(data) ? data : data?.items ?? [];
+  const total = Array.isArray(data) ? items.length : data?.total ?? items.length;
+  const singularLabel = recordLabel ?? (title.endsWith("s") ? title.slice(0, -1) : title);
+  const filteredItems = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return items;
+    return items.filter((item) => getSearchText(item).includes(query));
+  }, [items, search]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -89,29 +118,64 @@ export function ResourcePage<T extends Record<string, unknown>>({ title, descrip
     saveMutation.mutate(body);
   }
 
+  function openCreateForm() {
+    setEditing(null);
+    setErrorMessage(null);
+    setFormOpen((open) => !open);
+  }
+
+  function openEditForm(item: T) {
+    setEditing(item);
+    setErrorMessage(null);
+    setFormOpen(true);
+  }
+
+  function confirmDelete(item: T) {
+    if (!item.id) return;
+    const label = String(item.name ?? item.titleEn ?? item.topicEn ?? item.id);
+    if (window.confirm(`Remove ${label}? This hides it from the app but keeps history safe.`)) {
+      deleteMutation.mutate(String(item.id));
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-lg border border-[#e8e1d6] bg-white p-6 shadow-soft sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-5 rounded-lg border border-[#e8e1d6] bg-white p-6 shadow-soft sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-normal text-saffron">SWARAJ Admin</p>
+          <p className="text-[11px] font-extrabold uppercase tracking-normal text-saffron">App Admin</p>
           <h1 className="mt-2 text-4xl font-black leading-tight tracking-normal text-navy">{title}</h1>
           <p className="mt-2 max-w-2xl text-slate-600">{description}</p>
+          <p className="mt-3 text-xs font-extrabold uppercase tracking-normal text-slate-400">{total} total records</p>
         </div>
-        {fields.length > 0 ? (
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setFormOpen((open) => !open);
-            }}
-          >
+        {createEnabled && fields.length > 0 ? (
+          <Button onClick={openCreateForm}>
             <Plus size={17} />
-            {formOpen ? "Close" : `Add ${title}`}
+            {formOpen && !editing ? "Close" : addLabel ?? `Add ${singularLabel}`}
           </Button>
         ) : null}
       </div>
+
+      {items.length > 0 ? (
+        <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <label className="relative block w-full sm:max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} className="pl-10" placeholder={`Search ${title.toLowerCase()}...`} />
+          </label>
+          <p className="text-sm font-semibold text-slate-500">
+            Showing <span className="font-extrabold text-navy">{filteredItems.length}</span> of {items.length}
+          </p>
+        </Card>
+      ) : null}
+
       {formOpen && fields.length > 0 ? (
         <Card>
-          <form className="grid gap-4 md:grid-cols-2" onSubmit={submit}>
+          <div className="mb-5 flex items-center justify-between border-b border-[#f0e8dd] pb-4">
+            <div>
+              <h2 className="text-lg font-black text-navy">{editing ? `Edit ${singularLabel}` : `Add ${singularLabel}`}</h2>
+              <p className="mt-1 text-sm text-slate-500">Keep the fields short and app-ready for citizens.</p>
+            </div>
+          </div>
+          <form key={String(editing?.id ?? "create")} className="grid gap-4 md:grid-cols-2" onSubmit={submit}>
             {fields.map((field) => (
               <label key={field.key} className={`block text-xs font-extrabold uppercase tracking-normal text-slate-500 ${field.fullWidth ? "md:col-span-2" : ""}`}>
                 {field.label}
@@ -163,10 +227,13 @@ export function ResourcePage<T extends Record<string, unknown>>({ title, descrip
           </form>
         </Card>
       ) : null}
+
       {isLoading ? <Skeleton className="h-80" /> : null}
       {error ? <Card className="text-red-700">Unable to load {title.toLowerCase()}.</Card> : null}
-      {!isLoading && !error && items.length === 0 ? <EmptyState title="No records yet" body="Records will appear here once available." /> : null}
-      {items.length > 0 ? (
+      {!isLoading && !error && items.length === 0 ? <EmptyState title={emptyTitle} body={emptyBody} /> : null}
+      {!isLoading && !error && items.length > 0 && filteredItems.length === 0 ? <EmptyState title="No matches" body="Clear the search field to see all records." /> : null}
+
+      {filteredItems.length > 0 ? (
         <Card className="overflow-x-auto !p-0">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="bg-[#fff8ed] text-xs uppercase text-slate-500">
@@ -176,7 +243,7 @@ export function ResourcePage<T extends Record<string, unknown>>({ title, descrip
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0e8dd]">
-              {items.map((item, index) => (
+              {filteredItems.map((item, index) => (
                 <tr key={String(item.id ?? index)} className="hover:bg-[#fffaf2]">
                   {columns.map((column) => (
                     <td key={String(column.key)} className="px-4 py-3 font-medium text-slate-700">
@@ -187,20 +254,13 @@ export function ResourcePage<T extends Record<string, unknown>>({ title, descrip
                     <td className="whitespace-nowrap px-4 py-3">
                       <div className="inline-flex gap-2">
                         {fields.length > 0 ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => {
-                              setEditing(item);
-                              setFormOpen(true);
-                            }}
-                          >
+                          <Button type="button" variant="ghost" onClick={() => openEditForm(item)}>
                             <Pencil size={15} />
                             Edit
                           </Button>
                         ) : null}
                         {fields.length > 0 || deletable ? (
-                          <Button type="button" variant="ghost" onClick={() => item.id && deleteMutation.mutate(String(item.id))}>
+                          <Button type="button" variant="ghost" onClick={() => confirmDelete(item)} disabled={deleteMutation.isPending}>
                             <Trash2 size={15} />
                             Delete
                           </Button>
@@ -225,6 +285,14 @@ function renderCell<T extends Record<string, unknown>>(item: T, column: { key: s
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
+}
+
+function getSearchText(item: Record<string, unknown>) {
+  return Object.values(item).map((value) => {
+    if (value == null) return "";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  }).join(" ").toLowerCase();
 }
 
 function formatDefault(value: unknown, type?: ResourceField["type"]) {

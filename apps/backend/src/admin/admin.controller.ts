@@ -18,9 +18,10 @@ import {
   partialSchoolSchema,
   quizQuestionSchema,
   quizSchema,
-  schoolSchema
+  schoolSchema,
+  studentUpdateSchema
 } from "./admin.schemas";
-import type { AchievementBody, ChallengeBody, DebateBody, LessonBody, ModuleBody, QuizBody, QuizQuestionBody, SchoolBody } from "./admin.schemas";
+import type { AchievementBody, ChallengeBody, DebateBody, LessonBody, ModuleBody, QuizBody, QuizQuestionBody, SchoolBody, StudentUpdateBody } from "./admin.schemas";
 import { AdminService } from "./admin.service";
 
 @Controller("admin")
@@ -41,6 +42,12 @@ export class AdminController {
   @Delete("students/:id")
   deleteStudent(@Param("id") id: string) {
     return this.admin.deleteStudent(id);
+  }
+
+  @Patch("students/:id")
+  @UsePipes(new ZodValidationPipe(studentUpdateSchema))
+  updateStudent(@Param("id") id: string, @Body() body: StudentUpdateBody) {
+    return this.admin.updateStudent(id, body);
   }
 
   @Get("schools")

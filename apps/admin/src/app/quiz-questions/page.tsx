@@ -37,7 +37,9 @@ export default function QuizQuestionsPage() {
   return (
     <ResourcePage<QuizQuestionItem>
       title="Quiz Questions"
-      description="Add questions, choices, correct answers, and feedback shown after submission."
+      recordLabel="question"
+      addLabel="Add question"
+      description="Update the exact quiz questions, answer choices, correct answers, and instant explanations shown in the citizen app."
       endpoint="/admin/quiz-questions"
       columns={[
         { key: "order", label: "Order" },

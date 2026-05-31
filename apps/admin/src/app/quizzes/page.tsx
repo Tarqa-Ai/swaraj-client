@@ -13,6 +13,7 @@ type ModuleItem = {
 type QuizItem = Record<string, unknown> & {
   moduleId?: string;
   module?: ModuleItem;
+  questions?: unknown[];
 };
 
 export default function QuizzesPage() {
@@ -28,12 +29,14 @@ export default function QuizzesPage() {
   return (
     <ResourcePage<QuizItem>
       title="Quizzes"
-      description="Create one short quiz for each module."
+      recordLabel="quiz"
+      addLabel="Add quiz"
+      description="Add, remove, and modify module quizzes. Questions are managed separately so MCQ, True/False, and Match Column stay easy to wire."
       endpoint="/admin/quizzes"
       columns={[
         { key: "titleEn", label: "Quiz" },
-        { key: "titleHi", label: "Hindi Quiz" },
-        { key: "moduleId", label: "Module", render: (quiz) => quiz.module?.titleEn ?? quiz.moduleId ?? "" }
+        { key: "moduleId", label: "Module", render: (quiz) => quiz.module?.titleEn ?? quiz.moduleId ?? "" },
+        { key: "questions", label: "Questions", render: (quiz) => quiz.questions?.length ?? 0 }
       ]}
       fields={[
         { key: "moduleId", label: "Module", type: "select", options: moduleOptions, required: true },

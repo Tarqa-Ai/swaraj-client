@@ -1,16 +1,26 @@
+"use client";
+
 import { ResourcePage } from "@/components/resource-page";
+
+type ModuleItem = Record<string, unknown> & {
+  lessons?: unknown[];
+  quizzes?: unknown[];
+};
 
 export default function ModulesPage() {
   return (
-    <ResourcePage
+    <ResourcePage<ModuleItem>
       title="Modules"
-      description="Manage the three MVP learning modules and their display order."
+      recordLabel="module"
+      addLabel="Add module"
+      description="Add, remove, and modify the app learning modules. MVP should stay focused on Constitution, Government Structure, and Elections & Voting unless the scope changes."
       endpoint="/admin/modules"
       columns={[
         { key: "order", label: "Order" },
         { key: "titleEn", label: "Title" },
-        { key: "titleHi", label: "Hindi Title" },
-        { key: "estimatedMinutes", label: "Minutes" }
+        { key: "estimatedMinutes", label: "Minutes" },
+        { key: "lessons", label: "Lessons", render: (module) => module.lessons?.length ?? 0 },
+        { key: "quizzes", label: "Quizzes", render: (module) => module.quizzes?.length ?? 0 }
       ]}
       fields={[
         { key: "slug", label: "Slug", required: true, placeholder: "constitution-of-india", help: "Lowercase URL-safe name." },
