@@ -2,6 +2,18 @@
 
 SWARAJ is a civic education platform for Indian students in Grades 9-12. It includes a Flutter mobile app, NestJS API, PostgreSQL database, and Next.js admin panel.
 
+## Current Repo Status
+
+- Detailed handoff: [`docs/team-handoff.md`](docs/team-handoff.md)
+- Current build/update report: [`docs/repo-status-and-latest-update.md`](docs/repo-status-and-latest-update.md)
+- Product flow and runbook: [`docs/product-flow-runbook.md`](docs/product-flow-runbook.md)
+- GitHub remote: `https://github.com/Tarqa-Ai/swaraj-client.git`
+- Android APK output after build: `apps/mobile/build/app/outputs/flutter-apk/app-release.apk`
+
+## Latest Update
+
+The latest update modernizes the admin portal so it visually matches the SWARAJ mobile app identity: navy, cream, saffron, shield logo, sharper dashboard cards, branded login screen, redesigned sidebar, and cleaner shared admin CRUD tables/forms.
+
 ## Stack
 
 - Mobile: Flutter, Riverpod, GoRouter, Dio, Hive, secure token storage, localization assets.

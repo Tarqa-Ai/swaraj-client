@@ -5,7 +5,7 @@ import { AdminShell } from "@/components/admin-shell";
 
 export const metadata: Metadata = {
   title: "SWARAJ Admin",
-  description: "School civic education administration panel"
+  description: "SWARAJ app administration panel"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

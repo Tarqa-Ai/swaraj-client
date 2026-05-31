@@ -19,3 +19,6 @@ uploads
 certificates
 *.log
 *.tsbuildinfo
+*.apk
+*.aab
+*.ipa
