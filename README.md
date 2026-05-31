@@ -12,7 +12,7 @@ SWARAJ is a civic education platform for Indian students in Grades 9-12. It incl
 
 ## Latest Update
 
-The latest update modernizes the admin portal so it visually matches the SWARAJ mobile app identity: navy, cream, saffron, shield logo, sharper dashboard cards, branded login screen, redesigned sidebar, and cleaner shared admin CRUD tables/forms.
+The latest update modernizes the admin portal while keeping it simple for app admins: SWARAJ logo, navy/cream/saffron styling, a minimal login screen, redesigned sidebar, certificate records, and clearer admin content forms with dropdowns and helper text.
 
 ## Stack
 

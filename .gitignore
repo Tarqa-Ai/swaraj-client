@@ -15,8 +15,8 @@ coverage
 .packages
 ios/Pods
 android/.gradle
-uploads
-certificates
+/uploads
+/certificates
 *.log
 *.tsbuildinfo
 *.apk

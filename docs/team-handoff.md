@@ -147,7 +147,7 @@ The admin portal is a Next.js App Router app.
 | API helper | `src/lib/api.ts` | Fetch wrapper, bearer token, refresh-token queue. |
 | Auth store | `src/store/auth.ts` | Zustand persisted admin access/refresh tokens. |
 | Providers | `src/components/providers.tsx` | React Query and app providers. |
-| Generic CRUD | `src/components/resource-page.tsx` | Reusable table/form for admin resources. |
+| Generic CRUD | `src/components/resource-page.tsx` | Reusable table/form for admin resources, with select fields, helper text, and safer JSON parsing. |
 | Dashboard | `src/app/dashboard/page.tsx` | Analytics summary and top schools. |
 | Login | `src/app/login/page.tsx` | Admin login using `/auth/admin/login`. |
 | Schools | `src/app/schools/page.tsx` | School CRUD. |
@@ -158,7 +158,7 @@ The admin portal is a Next.js App Router app.
 | Debates | `src/app/debates/page.tsx` | Debate topic CRUD and active debate toggle. |
 | Achievements | `src/app/achievements/page.tsx` | Badge/achievement CRUD. |
 | Leaderboard | `src/app/leaderboard/page.tsx` | Top students. |
-| Certificates | `src/app/certificates/page.tsx` if added, otherwise backend endpoint is ready. |
+| Certificates | `src/app/certificates/page.tsx` | Issued certificate records. |
 | Exports | `src/app/exports/page.tsx` | Export summary endpoint. |
 
 ## Admin Portal Flow
@@ -348,7 +348,7 @@ Use this checklist to connect the product end to end.
 - Connect AI explain UI to `/ai/explain` only when `OPENAI_API_KEY` is configured.
 - Connect leaderboard UI to `/leaderboard`.
 - Connect certificate UI to `/certificate/status` and `/certificate/download`.
-- Confirm admin CRUD pages match the backend Zod schemas.
+- Confirm admin CRUD pages match the backend Zod schemas and keep select helpers aligned with backend enums.
 - Add auth protection to any upload or asset management endpoint before production.
 - Add integration tests for admin content creation and mobile learning completion.
 

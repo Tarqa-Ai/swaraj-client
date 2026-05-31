@@ -219,10 +219,10 @@ flowchart TD
 | 1 | Create module with slug, English/Hindi title, description, order, estimated minutes. | One module form. No advanced settings. |
 | 2 | Add lessons with module id, order, title, body, type. | Keep lesson type mostly `TEXT` for MVP. |
 | 3 | Add quiz attached to module. | One quiz per module is enough for MVP. |
-| 4 | Add questions with options and answer JSON. | For non-technical admins, this should later become a guided question editor. |
+| 4 | Add questions with options and answer JSON. | Admin now has quiz/module dropdowns, question type dropdowns, and JSON examples; a full guided visual question editor remains a future improvement. |
 | 5 | Test in citizen app. | Confirm module appears, lessons open, quiz submits. |
 
-Current technical note: quiz options and answers use JSON fields. This is flexible but not ideal for a non-technical admin. A paid improvement should convert this into a simple MCQ builder UI.
+Current technical note: quiz options, answers, and daily challenge questions still use JSON fields, but the admin now shows examples, helper text, and dropdowns for related modules/quizzes/categories. A paid improvement should convert this into a full MCQ/True-False/Match builder UI.
 
 ## Political IQ And Points
 

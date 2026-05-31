@@ -72,11 +72,11 @@ This document is for the team receiving the repository. It explains what has alr
 | Area | Before Latest Update | After Latest Update |
 |---|---|---|
 | Admin visual identity | Basic admin look with generic white/slate Tailwind surfaces. | SWARAJ-style navy, cream, saffron, shield logo, and app-matching tone. |
-| Admin login | Simple form-focused login screen. | Branded two-column login with SWARAJ logo, shield icon, mission copy, and polished credential panel. |
+| Admin login | Basic form-focused login screen. | Minimal centered login with SWARAJ logo, email, password, and sign-in only. |
 | Admin shell | Basic sidebar navigation. | Wider branded sidebar, active navy states, saffron icons, admin context block, and compact mobile header. |
 | Dashboard | Plain title, metric cards, and top schools card. | Branded operations header, mission/mode chips, modern metric cards, top schools panel, and navy civic status panel. |
 | Shared UI | Basic buttons, cards, inputs, skeletons, and empty states. | Reusable app-style button/card/input components with consistent borders, shadows, colors, and logo component. |
-| Resource pages | Plain page title, table, forms, text-only buttons. | Branded section headers, icon buttons, cream table headers, cleaner row spacing, polished forms. |
+| Resource pages | Plain page title, table, forms, text-only buttons, raw IDs, and raw JSON labels. | Branded section headers, icon buttons, cream table headers, cleaner row spacing, dropdowns for modules/quizzes/enums, JSON examples, and safer form errors. |
 | Auth guard | Protected pages could redirect to login before persisted auth hydrated. | Auth hydration check added so direct reloads like `/schools` remain stable after login. |
 | Tailwind tokens | Navy/saffron existed but did not fully match the app refresh. | Updated navy/saffron/cream tokens and softer SWARAJ shadow. |
 | Documentation | Handoff existed separately. | README now links to detailed handoff and latest status/update report. |

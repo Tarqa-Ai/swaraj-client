@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
@@ -10,7 +11,7 @@ type ResourcePageProps<T extends Record<string, unknown>> = {
   title: string;
   description: string;
   endpoint: string;
-  columns: Array<{ key: string; label: string }>;
+  columns: Array<{ key: string; label: string; render?: (item: T) => ReactNode }>;
   fields?: ResourceField[];
   deletable?: boolean;
 };
@@ -18,8 +19,12 @@ type ResourcePageProps<T extends Record<string, unknown>> = {
 type ResourceField = {
   key: string;
   label: string;
-  type?: "text" | "number" | "date" | "textarea" | "json" | "boolean";
+  type?: "text" | "number" | "date" | "textarea" | "json" | "boolean" | "select";
   required?: boolean;
+  help?: string;
+  placeholder?: string;
+  fullWidth?: boolean;
+  options?: Array<{ label: string; value: string }>;
 };
 
 export function ResourcePage<T extends Record<string, unknown>>({ title, description, endpoint, columns, fields = [], deletable = false }: ResourcePageProps<T>) {
@@ -53,17 +58,34 @@ export function ResourcePage<T extends Record<string, unknown>>({ title, descrip
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setErrorMessage(null);
     const form = new FormData(event.currentTarget);
-    const body = Object.fromEntries(
-      fields.map((field) => {
-        const raw = form.get(field.key)?.toString() ?? "";
-        if (field.type === "number") return [field.key, Number(raw)];
-        if (field.type === "boolean") return [field.key, raw === "true"];
-        if (field.type === "json") return [field.key, JSON.parse(raw)];
-        if (field.type === "date") return [field.key, raw];
-        return [field.key, raw];
-      }).filter(([, value]) => value !== "")
-    );
+    const body: Record<string, unknown> = {};
+
+    for (const field of fields) {
+      const raw = form.get(field.key)?.toString() ?? "";
+      if (raw.trim() === "") continue;
+
+      if (field.type === "number") {
+        body[field.key] = Number(raw);
+        continue;
+      }
+      if (field.type === "boolean") {
+        body[field.key] = raw === "true";
+        continue;
+      }
+      if (field.type === "json") {
+        try {
+          body[field.key] = JSON.parse(raw);
+        } catch {
+          setErrorMessage(`${field.label} must be valid JSON.`);
+          return;
+        }
+        continue;
+      }
+      body[field.key] = raw;
+    }
+
     saveMutation.mutate(body);
   }
 
@@ -91,18 +113,46 @@ export function ResourcePage<T extends Record<string, unknown>>({ title, descrip
         <Card>
           <form className="grid gap-4 md:grid-cols-2" onSubmit={submit}>
             {fields.map((field) => (
-              <label key={field.key} className="block text-xs font-extrabold uppercase tracking-normal text-slate-500">
+              <label key={field.key} className={`block text-xs font-extrabold uppercase tracking-normal text-slate-500 ${field.fullWidth ? "md:col-span-2" : ""}`}>
                 {field.label}
                 {field.type === "textarea" || field.type === "json" ? (
-                  <Textarea name={field.key} required={field.required} defaultValue={formatDefault(editing?.[field.key], field.type)} className="mt-1" />
+                  <Textarea
+                    name={field.key}
+                    required={field.required}
+                    defaultValue={formatDefault(editing?.[field.key], field.type)}
+                    placeholder={field.placeholder}
+                    className={field.type === "json" ? "mt-2 min-h-36 font-mono text-xs normal-case tracking-normal" : "mt-2"}
+                  />
                 ) : field.type === "boolean" ? (
                   <select name={field.key} defaultValue={String(editing?.[field.key] ?? false)} className="mt-2 h-10 w-full rounded-lg border border-[#d8d1c7] bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-navy outline-none focus:border-saffron focus:ring-2 focus:ring-orange-100">
-                    <option value="false">False</option>
-                    <option value="true">True</option>
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                  </select>
+                ) : field.type === "select" ? (
+                  <select
+                    name={field.key}
+                    required={field.required}
+                    defaultValue={formatDefault(editing?.[field.key], field.type)}
+                    className="mt-2 h-10 w-full rounded-lg border border-[#d8d1c7] bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-navy outline-none focus:border-saffron focus:ring-2 focus:ring-orange-100"
+                  >
+                    <option value="">Select {field.label.toLowerCase()}</option>
+                    {(field.options ?? []).map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                 ) : (
-                  <Input name={field.key} type={field.type ?? "text"} required={field.required} defaultValue={formatDefault(editing?.[field.key], field.type)} className="mt-2" />
+                  <Input
+                    name={field.key}
+                    type={field.type ?? "text"}
+                    required={field.required}
+                    defaultValue={formatDefault(editing?.[field.key], field.type)}
+                    placeholder={field.placeholder}
+                    className="mt-2"
+                  />
                 )}
+                {field.help ? <span className="mt-1 block text-[11px] font-medium normal-case leading-5 tracking-normal text-slate-500">{field.help}</span> : null}
               </label>
             ))}
             {errorMessage ? <p className="md:col-span-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">{errorMessage}</p> : null}
@@ -130,7 +180,7 @@ export function ResourcePage<T extends Record<string, unknown>>({ title, descrip
                 <tr key={String(item.id ?? index)} className="hover:bg-[#fffaf2]">
                   {columns.map((column) => (
                     <td key={String(column.key)} className="px-4 py-3 font-medium text-slate-700">
-                      {String(item[column.key] ?? "")}
+                      {renderCell(item, column)}
                     </td>
                   ))}
                   {fields.length > 0 || deletable ? (
@@ -166,6 +216,15 @@ export function ResourcePage<T extends Record<string, unknown>>({ title, descrip
       ) : null}
     </div>
   );
+}
+
+function renderCell<T extends Record<string, unknown>>(item: T, column: { key: string; render?: (item: T) => ReactNode }) {
+  if (column.render) return column.render(item);
+  const value = item[column.key];
+  if (value == null) return "";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 }
 
 function formatDefault(value: unknown, type?: ResourceField["type"]) {
