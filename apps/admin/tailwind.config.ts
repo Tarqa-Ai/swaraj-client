@@ -5,13 +5,12 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        navy: "#071D36",
-        saffron: "#FF9D25",
-        cream: "#FBFAF6",
+        navy: "#0B1F3A",
+        saffron: "#F28C28",
         ink: "#111827"
       },
       boxShadow: {
-        soft: "0 16px 40px rgba(7, 29, 54, 0.08)"
+        soft: "0 16px 40px rgba(15, 23, 42, 0.08)"
       }
     }
   },
