@@ -1,18 +1,23 @@
 import { Injectable } from "@nestjs/common";
-import { ChallengeCategory, LessonType, Prisma, QuizQuestionType } from "@prisma/client";
+import { ChallengeCategory, Language, LessonType, Prisma, QuizQuestionType } from "@prisma/client";
 import { pagination } from "../common/pagination";
 import { PrismaService } from "../prisma/prisma.service";
-import type { AchievementBody, ChallengeBody, DebateBody, LessonBody, ModuleBody, QuizBody, QuizQuestionBody, SchoolBody } from "./admin.schemas";
+import type { AchievementBody, ChallengeBody, DebateBody, LessonBody, ModuleBody, QuizBody, QuizQuestionBody, SchoolBody, StudentUpdateBody } from "./admin.schemas";
 
 @Injectable()
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
   async analytics() {
-    const [totalUsers, activeUsers, totalModules, completions, avgIq, debates, schools] = await Promise.all([
+    const [totalUsers, activeUsers, totalModules, totalLessons, totalQuizzes, totalQuestions, dailyChallenges, activeDebates, completions, avgIq, debates, schools] = await Promise.all([
       this.prisma.user.count({ where: { deletedAt: null } }),
       this.prisma.user.count({ where: { deletedAt: null, updatedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
       this.prisma.module.count({ where: { deletedAt: null } }),
+      this.prisma.lesson.count({ where: { deletedAt: null } }),
+      this.prisma.quiz.count({ where: { deletedAt: null } }),
+      this.prisma.quizQuestion.count({ where: { deletedAt: null } }),
+      this.prisma.dailyChallenge.count({ where: { deletedAt: null } }),
+      this.prisma.debate.count({ where: { deletedAt: null, isActive: true } }),
       this.prisma.moduleProgress.count(),
       this.prisma.user.aggregate({ _avg: { politicalIq: true }, where: { deletedAt: null } }),
       this.prisma.debateResponse.count(),
@@ -21,6 +26,12 @@ export class AdminService {
     return {
       totalUsers,
       activeUsers,
+      totalModules,
+      totalLessons,
+      totalQuizzes,
+      totalQuestions,
+      dailyChallenges,
+      activeDebates,
       completionPercent: totalUsers && totalModules ? Math.round((completions / (totalUsers * totalModules)) * 100) : 0,
       averagePoliticalIq: Math.round(avgIq._avg.politicalIq ?? 0),
       debateParticipation: debates,
@@ -31,11 +42,22 @@ export class AdminService {
   listStudents(query: Record<string, unknown>) {
     const { page, limit, skip } = pagination(query);
     return this.paginated(
-      this.prisma.user.findMany({ where: { role: "STUDENT", deletedAt: null }, include: { school: true }, skip, take: limit }),
+      this.prisma.user.findMany({ where: { role: "STUDENT", deletedAt: null }, include: { school: true }, orderBy: { updatedAt: "desc" }, skip, take: limit }),
       this.prisma.user.count({ where: { role: "STUDENT", deletedAt: null } }),
       page,
       limit
     );
+  }
+
+  updateStudent(id: string, body: StudentUpdateBody) {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        ...body,
+        language: body.language as Language | undefined
+      },
+      include: { school: true }
+    });
   }
 
   listSchools(query: Record<string, unknown>) {

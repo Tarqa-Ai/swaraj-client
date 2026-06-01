@@ -4,7 +4,9 @@ export default function DebatesPage() {
   return (
     <ResourcePage
       title="Debates"
-      description="Manage the active civic reflection topic shown in the citizen app."
+      recordLabel="debate"
+      addLabel="Add debate"
+      description="Manage the active For/Against reflection topic shown in the citizen app. Only one debate should be active."
       endpoint="/admin/debates"
       columns={[
         { key: "topicEn", label: "Topic" },

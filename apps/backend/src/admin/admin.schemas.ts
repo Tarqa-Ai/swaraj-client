@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+export const studentUpdateSchema = z.object({
+  name: z.string().min(2).optional(),
+  phone: z.string().min(10).optional(),
+  grade: z.coerce.number().int().min(9).max(12).optional(),
+  language: z.enum(["en", "hi"]).optional(),
+  schoolId: z.string().optional(),
+  politicalIq: z.coerce.number().int().min(0).max(100).optional(),
+  streakCount: z.coerce.number().int().min(0).optional()
+});
+
 export const schoolSchema = z.object({
   name: z.string().min(2),
   district: z.string().min(2),
@@ -91,6 +101,7 @@ export const partialQuizSchema = quizSchema.partial();
 export const partialQuizQuestionSchema = quizQuestionSchema.partial();
 export const partialAchievementSchema = achievementSchema.partial();
 
+export type StudentUpdateBody = z.infer<typeof studentUpdateSchema>;
 export type SchoolBody = z.infer<typeof schoolSchema>;
 export type ModuleBody = z.infer<typeof moduleSchema>;
 export type LessonBody = z.infer<typeof lessonSchema>;
