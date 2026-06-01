@@ -19,8 +19,7 @@ export class ProfileController {
 
   @Patch("me/profile")
   @UseGuards(JwtAuthGuard)
-  @UsePipes(new ZodValidationPipe(updateProfileSchema))
-  update(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateProfileBody) {
+  update(@CurrentUser() user: AuthenticatedUser, @Body(new ZodValidationPipe(updateProfileSchema)) body: UpdateProfileBody) {
     return this.profile.updateProfile(user.id, body);
   }
 

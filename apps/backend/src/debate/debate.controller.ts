@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards, UsePipes } from "@nestjs/common";
+import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import type { AuthenticatedUser } from "../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
@@ -18,8 +18,7 @@ export class DebateController {
   }
 
   @Post("respond")
-  @UsePipes(new ZodValidationPipe(debateResponseSchema))
-  respond(@CurrentUser() user: AuthenticatedUser, @Body() body: DebateResponseBody) {
+  respond(@CurrentUser() user: AuthenticatedUser, @Body(new ZodValidationPipe(debateResponseSchema)) body: DebateResponseBody) {
     return this.debate.respond(user.id, body);
   }
 }

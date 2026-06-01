@@ -30,6 +30,22 @@ class _IQRingState extends State<IQRing> with SingleTickerProviderStateMixin {
   }
 
   @override
+  void didUpdateWidget(IQRing oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.score != oldWidget.score) {
+      setState(() {
+        _animation = Tween<double>(
+          begin: _animation.value,
+          end: widget.score,
+        ).animate(
+          CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+        );
+      });
+      _controller.forward(from: 0.0);
+    }
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
@@ -54,13 +70,14 @@ class _IQRingState extends State<IQRing> with SingleTickerProviderStateMixin {
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    scoreValue.round().toString(),
+                  SlotMachineScore(
+                    score: widget.score.round(),
                     style: SwarajTypography.headline(
-                      fontSize: 44,
+                      fontSize: 40,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     'POLITICAL IQ',
                     style: SwarajTypography.mono(
@@ -75,6 +92,115 @@ class _IQRingState extends State<IQRing> with SingleTickerProviderStateMixin {
           ),
         );
       },
+    );
+  }
+}
+
+class SlotMachineScore extends StatelessWidget {
+  final int score;
+  final TextStyle style;
+
+  const SlotMachineScore({super.key, required this.score, required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    final digits = score.toString().split('');
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: digits.map((digit) {
+        final d = int.tryParse(digit) ?? 0;
+        return RollingDigit(digit: d, style: style);
+      }).toList(),
+    );
+  }
+}
+
+class RollingDigit extends StatefulWidget {
+  final int digit;
+  final TextStyle style;
+
+  const RollingDigit({super.key, required this.digit, required this.style});
+
+  @override
+  State<RollingDigit> createState() => _RollingDigitState();
+}
+
+class _RollingDigitState extends State<RollingDigit> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _animation = Tween<double>(begin: 0.0, end: widget.digit.toDouble()).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    );
+    _controller.forward();
+  }
+
+  @override
+  void didUpdateWidget(RollingDigit oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.digit != oldWidget.digit) {
+      _animation = Tween<double>(
+        begin: _animation.value,
+        end: widget.digit.toDouble(),
+      ).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+      );
+      _controller.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+  @override
+  Widget build(BuildContext context) {
+    final fontSize = widget.style.fontSize ?? 40.0;
+    final digitHeight = fontSize * 1.5;
+
+    return SizedBox(
+      width: fontSize * 0.72,
+      height: digitHeight,
+      child: ClipRect(
+        child: AnimatedBuilder(
+          animation: _animation,
+          builder: (context, child) {
+            final val = _animation.value;
+            return Stack(
+              children: [
+                Transform.translate(
+                  offset: Offset(0, -val * digitHeight),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(10, (index) {
+                      return SizedBox(
+                        height: digitHeight,
+                        child: Center(
+                          child: Text(
+                            index.toString(),
+                            style: widget.style.copyWith(
+                              height: 1.0,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 }

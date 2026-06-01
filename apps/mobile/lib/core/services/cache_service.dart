@@ -36,23 +36,11 @@ class SwarajCacheService {
     final currentQueue = _prefs!.getInt(_keyOfflinePoints) ?? 0;
     await _prefs!.setInt(_keyOfflinePoints, currentQueue + points);
 
-    // Also update cached profile points directly so the UI shows it instantly
+    // Optimistically update cached points; IQ is authoritative from server via GET /me
     final profile = getUserProfile();
     if (profile != null) {
-      final currentPoints = profile['points'] ?? 0;
+      final currentPoints = (profile['points'] as num?)?.toInt() ?? 0;
       profile['points'] = currentPoints + points;
-
-      // Re-calculate Political IQ locally offline so user gets instant updates
-      final completedCount =
-          (profile['completedLessons'] as List?)?.length ?? 0;
-      final progressBonus = (completedCount * 2 > 30) ? 30 : completedCount * 2;
-      final pointsBonus = ((currentPoints + points) ~/ 100 > 12)
-          ? 12
-          : (currentPoints + points) ~/ 100;
-      final streak = profile['streak'] ?? 1;
-      final streakBonus = (streak ~/ 2 > 10) ? 10 : streak ~/ 2;
-      profile['politicalIQ'] = 50 + progressBonus + pointsBonus + streakBonus;
-
       await saveUserProfile(profile);
     }
   }

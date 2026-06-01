@@ -13,8 +13,10 @@ export class QuizController {
   constructor(private readonly quiz: QuizService) {}
 
   @Post("submit")
-  @UsePipes(new ZodValidationPipe(quizSubmitSchema))
-  submit(@CurrentUser() user: AuthenticatedUser, @Body() body: QuizSubmitBody) {
+  submit(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(quizSubmitSchema)) body: QuizSubmitBody
+  ) {
     return this.quiz.submit(user.id, body);
   }
 }

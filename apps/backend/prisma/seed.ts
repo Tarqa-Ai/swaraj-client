@@ -23,13 +23,15 @@ async function main() {
     });
   }
 
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@swaraj.local";
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe123!";
   await prisma.adminUser.upsert({
-    where: { email: "admin@swaraj.local" },
+    where: { email: adminEmail },
     update: {},
     create: {
-      email: "admin@swaraj.local",
+      email: adminEmail,
       name: "SWARAJ Admin",
-      passwordHash: await bcrypt.hash("ChangeMe123!", 12)
+      passwordHash: await bcrypt.hash(adminPassword, 12)
     }
   });
 

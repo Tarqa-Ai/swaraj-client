@@ -1,68 +1,109 @@
 import 'package:flutter/material.dart';
-import '../../core/services/cache_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/api/api_client.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/typography.dart';
 
-class ProfileSetupScreen extends StatefulWidget {
+class ProfileSetupScreen extends ConsumerStatefulWidget {
   final String phoneNumber;
 
   const ProfileSetupScreen({super.key, required this.phoneNumber});
 
   @override
-  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+  ConsumerState<ProfileSetupScreen> createState() =>
+      _ProfileSetupScreenState();
 }
 
-class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   int _currentStep = 1;
+  bool _isLoading = false;
+  bool _isSubmitting = false;
+  String? _error;
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
-  final TextEditingController _schoolController = TextEditingController();
 
   String _selectedClass = 'XII';
-  String _selectedLanguage = 'English';
-  final Set<String> _selectedInterests = {
-    'Constitution',
-    'Debates',
-    'AI & Civics'
-  };
+  String _selectedLanguage = 'en';
+  final Set<String> _selectedInterests = {};
+
+  List<Map<String, dynamic>> _schools = [];
+  String? _selectedSchoolId;
+  String _schoolSearchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSchools();
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _dobController.dispose();
-    _schoolController.dispose();
     super.dispose();
   }
 
-  Future<void> _nextStep() async {
-    if (_currentStep < 3) {
+  Future<void> _loadSchools() async {
+    setState(() => _isLoading = true);
+    try {
+      final data =
+          await ref.read(apiClientProvider).get('/schools') as List<dynamic>;
+      if (!mounted) return;
       setState(() {
-        _currentStep++;
+        _schools =
+            data.map((s) => Map<String, dynamic>.from(s as Map)).toList();
       });
-    } else {
-      await SwarajCacheService.saveUserProfile({
-        'phoneNumber': widget.phoneNumber,
-        'name': _nameController.text.trim().isEmpty
-            ? 'Arjun K. Sharma'
-            : _nameController.text.trim(),
-        'dateOfBirth': _dobController.text.trim(),
-        'school': _schoolController.text.trim().isEmpty
-            ? "St. Xavier's Senior Sec."
-            : _schoolController.text.trim(),
-        'grade': _selectedClass,
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = 'Failed to load schools');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  bool _canProceedStep1() =>
+      _nameController.text.trim().length >= 2 && _dobController.text.isNotEmpty;
+
+  bool _canProceedStep2() => _selectedSchoolId != null;
+
+  bool _canProceedStep3() => _selectedLanguage.isNotEmpty;
+
+  Future<void> _nextStep() async {
+    if (_currentStep == 1 && !_canProceedStep1()) {
+      setState(() => _error = 'Please enter your name and date of birth.');
+      return;
+    }
+    if (_currentStep == 2 && !_canProceedStep2()) {
+      setState(() => _error = 'Please select your school.');
+      return;
+    }
+    setState(() => _error = null);
+
+    if (_currentStep < 3) {
+      setState(() => _currentStep++);
+      return;
+    }
+
+    await _submit();
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+    try {
+      final gradeInt = int.tryParse(_selectedClass) ??
+          {'IX': 9, 'X': 10, 'XI': 11, 'XII': 12}[_selectedClass]!;
+
+      await ref.read(apiClientProvider).patch('/me/profile', {
+        'name': _nameController.text.trim(),
+        'grade': gradeInt,
+        'schoolId': _selectedSchoolId!,
         'language': _selectedLanguage,
-        'interests': _selectedInterests.toList(),
-        'points': 1452,
-        'politicalIQ': 72,
-        'streak': 14,
-        'completedLessons': [
-          'constitution-01',
-          'government-01',
-          'elections-01'
-        ],
-        'profileCompleted': true,
       });
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -75,6 +116,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         ),
       );
       Navigator.pushReplacementNamed(context, '/dashboard');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst(RegExp(r'^.*?: '), '');
+      });
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -82,6 +130,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     if (_currentStep > 1) {
       setState(() {
         _currentStep--;
+        _error = null;
       });
     }
   }
@@ -113,6 +162,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     }
   }
 
+  List<Map<String, dynamic>> get _filteredSchools {
+    if (_schoolSearchQuery.isEmpty) return _schools;
+    final q = _schoolSearchQuery.toLowerCase();
+    return _schools.where((s) {
+      final name = (s['name'] as String? ?? '').toLowerCase();
+      final district = (s['district'] as String? ?? '').toLowerCase();
+      return name.contains(q) || district.contains(q);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,7 +180,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -162,13 +222,23 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 child: _buildStepContent(),
               ),
             ),
+            if (_error != null)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                child: Text(
+                  _error!,
+                  style: SwarajTypography.body(
+                      fontSize: 13, color: Colors.red.shade700),
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.all(24),
               child: Row(
                 children: [
                   if (_currentStep > 1) ...[
                     OutlinedButton(
-                      onPressed: _prevStep,
+                      onPressed: _isSubmitting ? null : _prevStep,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 24, vertical: 16),
@@ -195,7 +265,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   ],
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _nextStep,
+                      onPressed: _isSubmitting ? null : _nextStep,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: SwarajColors.navy,
                         foregroundColor: Colors.white,
@@ -205,21 +275,28 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         ),
                         elevation: 0,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            _currentStep == 3 ? 'GET STARTED' : 'NEXT',
-                            style: SwarajTypography.mono(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _currentStep == 3 ? 'GET STARTED' : 'NEXT',
+                                  style: SwarajTypography.mono(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.arrow_forward, size: 16),
+                              ],
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward, size: 16),
-                        ],
-                      ),
                     ),
                   ),
                 ],
@@ -258,11 +335,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: _nameController,
-              style:
-                  SwarajTypography.body(fontSize: 15, color: SwarajColors.navy),
+              onChanged: (_) => setState(() {}),
+              style: SwarajTypography.body(
+                  fontSize: 15, color: SwarajColors.navy),
               decoration: InputDecoration(
-                hintText: 'e.g., Arjun K. Sharma',
-                hintStyle: SwarajTypography.body(color: SwarajColors.outline),
+                hintText: 'Enter your full name',
+                hintStyle:
+                    SwarajTypography.body(color: SwarajColors.outline),
                 filled: true,
                 fillColor: SwarajColors.navy.withValues(alpha: 0.03),
                 contentPadding: const EdgeInsets.all(15),
@@ -274,17 +353,19 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            Text('DATE OF BIRTH', style: SwarajTypography.mono(fontSize: 11)),
+            Text('DATE OF BIRTH',
+                style: SwarajTypography.mono(fontSize: 11)),
             const SizedBox(height: 8),
             TextField(
               controller: _dobController,
               readOnly: true,
               onTap: _selectDate,
-              style:
-                  SwarajTypography.body(fontSize: 15, color: SwarajColors.navy),
+              style: SwarajTypography.body(
+                  fontSize: 15, color: SwarajColors.navy),
               decoration: InputDecoration(
                 hintText: 'Select your birthday',
-                hintStyle: SwarajTypography.body(color: SwarajColors.outline),
+                hintStyle:
+                    SwarajTypography.body(color: SwarajColors.outline),
                 suffixIcon: const Icon(Icons.calendar_today,
                     size: 18, color: SwarajColors.slateLight),
                 filled: true,
@@ -304,34 +385,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 12),
-            Text('Your School', style: SwarajTypography.headline(fontSize: 32)),
+            Text('Your School',
+                style: SwarajTypography.headline(fontSize: 32)),
             const SizedBox(height: 8),
             Text(
               'This helps us connect you with classmates and your school leaderboard.',
               style: SwarajTypography.body(),
             ),
             const SizedBox(height: 36),
-            Text('SCHOOL NAME', style: SwarajTypography.mono(fontSize: 11)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _schoolController,
-              style:
-                  SwarajTypography.body(fontSize: 15, color: SwarajColors.navy),
-              decoration: InputDecoration(
-                hintText: "e.g., St. Xavier's Senior Sec.",
-                hintStyle: SwarajTypography.body(color: SwarajColors.outline),
-                filled: true,
-                fillColor: SwarajColors.navy.withValues(alpha: 0.03),
-                contentPadding: const EdgeInsets.all(15),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                      color: SwarajColors.navy.withValues(alpha: 0.1)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text('CLASS / GRADE', style: SwarajTypography.mono(fontSize: 11)),
+            Text('CLASS / GRADE',
+                style: SwarajTypography.mono(fontSize: 11)),
             const SizedBox(height: 12),
             Wrap(
               spacing: 10,
@@ -341,11 +404,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   label: Text(grade),
                   selected: isSelected,
                   onSelected: (selected) {
-                    if (selected) {
-                      setState(() {
-                        _selectedClass = grade;
-                      });
-                    }
+                    if (selected) setState(() => _selectedClass = grade);
                   },
                   labelStyle: SwarajTypography.mono(
                     fontSize: 14,
@@ -367,6 +426,111 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 );
               }).toList(),
             ),
+            const SizedBox(height: 24),
+            Text('SCHOOL NAME',
+                style: SwarajTypography.mono(fontSize: 11)),
+            const SizedBox(height: 8),
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else ...[
+              TextField(
+                onChanged: (v) => setState(() => _schoolSearchQuery = v),
+                style: SwarajTypography.body(
+                    fontSize: 15, color: SwarajColors.navy),
+                decoration: InputDecoration(
+                  hintText: 'Search school by name or district',
+                  hintStyle:
+                      SwarajTypography.body(color: SwarajColors.outline),
+                  prefixIcon:
+                      const Icon(Icons.search, color: SwarajColors.slateLight),
+                  filled: true,
+                  fillColor: SwarajColors.navy.withValues(alpha: 0.03),
+                  contentPadding: const EdgeInsets.all(15),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                        color: SwarajColors.navy.withValues(alpha: 0.1)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (_filteredSchools.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    _schools.isEmpty
+                        ? 'No schools available'
+                        : 'No schools match your search',
+                    style: SwarajTypography.body(color: SwarajColors.slate),
+                  ),
+                )
+              else
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 240),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: SwarajColors.navy.withValues(alpha: 0.1)),
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: _filteredSchools.length,
+                    separatorBuilder: (_, __) => Divider(
+                      height: 1,
+                      color: SwarajColors.navy.withValues(alpha: 0.06),
+                    ),
+                    itemBuilder: (context, index) {
+                      final school = _filteredSchools[index];
+                      final id = school['id'] as String;
+                      final name = school['name'] as String? ?? '';
+                      final district = school['district'] as String? ?? '';
+                      final isSelected = _selectedSchoolId == id;
+                      return InkWell(
+                        onTap: () =>
+                            setState(() => _selectedSchoolId = id),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          color: isSelected
+                              ? SwarajColors.saffron.withValues(alpha: 0.08)
+                              : null,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: SwarajTypography.body(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: SwarajColors.navy,
+                                      ),
+                                    ),
+                                    if (district.isNotEmpty)
+                                      Text(
+                                        district,
+                                        style: SwarajTypography.mono(
+                                            fontSize: 11,
+                                            color: SwarajColors.slateLight),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              if (isSelected)
+                                const Icon(Icons.check,
+                                    size: 18, color: SwarajColors.saffron),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            ],
           ],
         );
       case 3:
@@ -382,21 +546,24 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               style: SwarajTypography.body(),
             ),
             const SizedBox(height: 36),
-            Text('APP LANGUAGE', style: SwarajTypography.mono(fontSize: 11)),
+            Text('APP LANGUAGE',
+                style: SwarajTypography.mono(fontSize: 11)),
             const SizedBox(height: 12),
             Wrap(
               spacing: 10,
               runSpacing: 10,
-              children: ['English', 'Hindi', 'Hinglish'].map((language) {
-                final bool isSelected = _selectedLanguage == language;
+              children: [
+                {'label': 'English', 'value': 'en'},
+                {'label': 'Hindi', 'value': 'hi'},
+              ].map((lang) {
+                final bool isSelected =
+                    _selectedLanguage == lang['value'];
                 return ChoiceChip(
-                  label: Text(language),
+                  label: Text(lang['label']!),
                   selected: isSelected,
                   onSelected: (selected) {
                     if (selected) {
-                      setState(() {
-                        _selectedLanguage = language;
-                      });
+                      setState(() => _selectedLanguage = lang['value']!);
                     }
                   },
                   labelStyle: SwarajTypography.body(
@@ -420,7 +587,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               }).toList(),
             ),
             const SizedBox(height: 28),
-            Text('INTERESTS', style: SwarajTypography.mono(fontSize: 11)),
+            Text('INTERESTS (OPTIONAL)',
+                style: SwarajTypography.mono(fontSize: 11)),
             const SizedBox(height: 12),
             Wrap(
               spacing: 10,

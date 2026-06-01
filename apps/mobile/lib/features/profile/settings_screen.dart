@@ -489,6 +489,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Scaffold(
           backgroundColor: SwarajColors.cream,
           appBar: AppBar(
+        automaticallyImplyLeading: false,
             backgroundColor: Colors.white,
             elevation: 0,
             leading: IconButton(

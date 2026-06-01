@@ -52,7 +52,9 @@ enum PoliticalIQReason {
 
 model User {
   id                    String                     @id @default(cuid())
-  phone                 String                     @unique
+  phone                 String?                    @unique
+  email                 String?                    @unique
+  supabaseId            String?                    @unique
   name                  String?
   grade                 Int?
   language              Language                   @default(en)
@@ -62,7 +64,6 @@ model User {
   politicalIq           Int                        @default(0)
   streakCount           Int                        @default(0)
   lastChallengeDate     DateTime?
-  refreshTokenHash      String?
   onboardingCompletedAt DateTime?
   lessonProgress        LessonProgress[]
   moduleProgress        ModuleProgress[]
@@ -72,7 +73,6 @@ model User {
   iqLogs                PoliticalIQLog[]
   achievements          UserAchievement[]
   certificates          Certificate[]
-  otpChallenges         OtpChallenge[]
   createdAt             DateTime                   @default(now())
   updatedAt             DateTime                   @updatedAt
   deletedAt             DateTime?
@@ -336,20 +336,6 @@ model Certificate {
   issuedAt       DateTime @default(now())
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-}
-
-model OtpChallenge {
-  id          String    @id @default(cuid())
-  phone       String
-  userId      String?
-  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  codeHash    String
-  expiresAt   DateTime
-  attempts    Int       @default(0)
-  consumedAt  DateTime?
-  createdAt   DateTime  @default(now())
-
-  @@index([phone, createdAt])
 }
 
 model MediaAsset {

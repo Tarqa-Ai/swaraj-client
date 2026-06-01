@@ -1,4 +1,6 @@
 services:
+  # Local postgres — only needed for local dev without Supabase.
+  # When DATABASE_URL points to Supabase, comment this service out.
   postgres:
     image: postgres:16-alpine
     environment:
@@ -6,11 +8,11 @@ services:
       POSTGRES_PASSWORD: swaraj
       POSTGRES_DB: swaraj
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U swaraj"]
+      test: [ "CMD-SHELL", "pg_isready -U swaraj" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -21,17 +23,12 @@ services:
       dockerfile: apps/backend/Dockerfile
     env_file:
       - .env
-    environment:
-      DATABASE_URL: postgresql://swaraj:swaraj@postgres:5432/swaraj?schema=public
-    depends_on:
-      postgres:
-        condition: service_healthy
     ports:
       - "4000:4000"
     volumes:
       - backend_uploads:/app/uploads
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/api/health >/dev/null 2>&1 || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:4000/api/health >/dev/null 2>&1 || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -48,7 +45,7 @@ services:
     ports:
       - "3000:3000"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/login >/dev/null 2>&1 || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:3000/login >/dev/null 2>&1 || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 10

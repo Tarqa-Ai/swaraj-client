@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'core/config/config.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/services/cache_service.dart';
+import 'core/api/api_client.dart';
+import 'core/storage/session_store.dart';
 import 'core/constants/colors.dart';
 import 'core/widgets/bottom_nav.dart';
 import 'features/onboarding/onboarding_screen.dart';
@@ -12,6 +13,7 @@ import 'features/auth/profile_setup_screen.dart';
 import 'features/dashboard/home_screen.dart';
 import 'features/learning/learn_screen.dart';
 import 'features/learning/lesson_screen.dart';
+import 'features/learning/module_detail_screen.dart';
 import 'features/debate/debate_screen.dart';
 import 'features/ai_assistant/ai_chat_screen.dart';
 import 'features/profile/profile_screen.dart';
@@ -22,7 +24,11 @@ import 'features/admin/admin_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SwarajCacheService.init();
-  runApp(const SwarajApp());
+  await Supabase.initialize(
+    url: const String.fromEnvironment('SUPABASE_URL'),
+    anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY'),
+  );
+  runApp(const ProviderScope(child: SwarajApp()));
 }
 
 class SwarajApp extends StatelessWidget {
@@ -45,23 +51,34 @@ class SwarajApp extends StatelessWidget {
           case '/login':
             return MaterialPageRoute(builder: (_) => const LoginScreen());
           case '/otp':
-            final String phone = settings.arguments as String? ?? '98765 43210';
-            return MaterialPageRoute(
-                builder: (_) => OtpScreen(phoneNumber: phone));
+            final String email = settings.arguments as String? ?? '';
+            return MaterialPageRoute(builder: (_) => OtpScreen(email: email));
           case '/setup':
             final args = settings.arguments as Map<String, dynamic>?;
-            final phone = args?['phoneNumber'] as String? ?? '9876543210';
+            final phone = args?['phoneNumber'] as String? ?? '';
             return MaterialPageRoute(
                 builder: (_) => ProfileSetupScreen(phoneNumber: phone));
           case '/dashboard':
             return MaterialPageRoute(builder: (_) => const NavigationShell());
+          case '/module':
+            final moduleArgs = settings.arguments as Map?;
+            final moduleId = moduleArgs?['moduleId'] as String? ?? '';
+            return MaterialPageRoute(
+                builder: (_) => ModuleDetailScreen(moduleId: moduleId));
           case '/lesson':
-            return MaterialPageRoute(builder: (_) => const LessonScreen());
+            final lessonArgs = settings.arguments as Map?;
+            final lessonId = lessonArgs?['lessonId'] as String? ?? '';
+            final moduleId = lessonArgs?['moduleId'] as String? ?? '';
+            return MaterialPageRoute(
+                builder: (_) =>
+                    LessonScreen(lessonId: lessonId, moduleId: moduleId));
           case '/cert-locked':
             return MaterialPageRoute(builder: (_) => const CertLockedScreen());
           case '/certificate':
             return MaterialPageRoute(
                 builder: (_) => const CertificateDetailScreen());
+          case '/ai-chat':
+            return MaterialPageRoute(builder: (_) => const AIChatScreen());
           case '/admin':
             return MaterialPageRoute(
               builder: (_) => AdminScreen(
@@ -78,16 +95,17 @@ class SwarajApp extends StatelessWidget {
   }
 }
 
-class NavigationShell extends StatefulWidget {
+class NavigationShell extends ConsumerStatefulWidget {
   const NavigationShell({super.key});
 
   @override
-  State<NavigationShell> createState() => _NavigationShellState();
+  ConsumerState<NavigationShell> createState() => _NavigationShellState();
 }
 
-class _NavigationShellState extends State<NavigationShell> {
+class _NavigationShellState extends ConsumerState<NavigationShell> {
   int _currentIndex = 0;
-  int _points = 12;
+  int _points = 0;
+  int _homeRefreshToken = 0;
 
   @override
   void initState() {
@@ -99,7 +117,7 @@ class _NavigationShellState extends State<NavigationShell> {
     final profile = SwarajCacheService.getUserProfile();
     if (profile != null) {
       setState(() {
-        _points = profile['points'] ?? 12;
+        _points = (profile['points'] as num?)?.toInt() ?? 0;
       });
     }
   }
@@ -108,25 +126,18 @@ class _NavigationShellState extends State<NavigationShell> {
     setState(() {
       _points += amount;
     });
-    // Queue offline points instantly on local disk cache
     SwarajCacheService.queueOfflinePoints(amount);
-
-    // Trigger online background synchronization
     _syncPointsOnline(amount);
   }
 
   Future<void> _syncPointsOnline(int amount) async {
+    final phone = await ref.read(sessionStoreProvider).getPhone();
+    if (phone == null || phone.isEmpty) return;
     try {
-      final response = await http
-          .put(
-            Uri.parse('${SwarajConfig.apiBaseUrl}/users/9876543210/points'),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode({'amount': amount}),
-          )
-          .timeout(const Duration(seconds: 4));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      final data = await ref
+          .read(apiClientProvider)
+          .put('/users/$phone/points', {'amount': amount}) as Map<String, dynamic>?;
+      if (data != null) {
         await SwarajCacheService.saveUserProfile(data);
         await SwarajCacheService.clearOfflinePointsQueue();
       }
@@ -139,13 +150,14 @@ class _NavigationShellState extends State<NavigationShell> {
   void _onTabSelect(int index) {
     setState(() {
       _currentIndex = index;
+      if (index == 0) _homeRefreshToken++;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomeScreen(onTabChange: _onTabSelect, points: _points),
+      HomeScreen(onTabChange: _onTabSelect, points: _points, refreshToken: _homeRefreshToken),
       LearnScreen(
         onTabChange: _onTabSelect,
         points: _points,
@@ -158,8 +170,9 @@ class _NavigationShellState extends State<NavigationShell> {
         points: _points,
         onResetAllData: () async {
           await SwarajCacheService.clearAll();
+          await ref.read(sessionStoreProvider).clear();
           setState(() {
-            _points = 12;
+            _points = 0;
           });
         },
       ),

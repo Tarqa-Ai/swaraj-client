@@ -1,48 +1,48 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/api/api_client.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/typography.dart';
+import '../../core/services/cache_service.dart';
 
 class ChatMessage {
   final String text;
   final bool isUser;
-  final String? heading;
   final DateTime timestamp;
 
   ChatMessage({
     required this.text,
     required this.isUser,
-    this.heading,
     required this.timestamp,
   });
 }
 
-class AIChatScreen extends StatefulWidget {
+class AIChatScreen extends ConsumerStatefulWidget {
   const AIChatScreen({super.key});
 
   @override
-  State<AIChatScreen> createState() => _AIChatScreenState();
+  ConsumerState<AIChatScreen> createState() => _AIChatScreenState();
 }
 
-class _AIChatScreenState extends State<AIChatScreen> {
-  final List<ChatMessage> _messages = [
-    ChatMessage(
-      text: 'What is a Quorum?',
-      isUser: true,
-      timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-    ),
-    ChatMessage(
-      text:
-          'Think of a Quorum as the "Minimum Attendance Rule."\n\nFor any meeting of the Parliament (Lok Sabha or Rajya Sabha) to be official and valid, at least 1/10th of the total members must be present. If fewer people show up, the Speaker can suspend the meeting because there aren\'t enough people to represent the nation fairly.',
-      isUser: false,
-      heading: 'Explain Simply',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 4)),
-    ),
-  ];
-
+class _AIChatScreenState extends ConsumerState<AIChatScreen> {
+  final List<ChatMessage> _messages = [];
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isTyping = false;
+  bool _isLoading = false;
+
+  String get _userInitials {
+    final name = SwarajCacheService.getUserProfile()?['name'] as String? ?? '';
+    final parts = name.trim().split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.length >= 2) return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+    if (parts.isNotEmpty) return parts.first[0].toUpperCase();
+    return '?';
+  }
+
+  String get _language {
+    final lang = SwarajCacheService.getUserProfile()?['language'] as String? ?? 'en';
+    return lang == 'hi' ? 'hi' : 'en';
+  }
 
   @override
   void dispose() {
@@ -63,64 +63,45 @@ class _AIChatScreenState extends State<AIChatScreen> {
     });
   }
 
-  void _showMockToast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: SwarajTypography.mono(color: Colors.white, fontSize: 13),
-        ),
-        backgroundColor: SwarajColors.navy,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _sendMessage(String query) {
-    if (query.trim().isEmpty) return;
+  Future<void> _sendMessage(String query) async {
+    final text = query.trim();
+    if (text.isEmpty || _isLoading) return;
 
     setState(() {
-      _messages.add(ChatMessage(
-        text: query,
-        isUser: true,
-        timestamp: DateTime.now(),
-      ));
-      _isTyping = true;
+      _messages.add(ChatMessage(text: text, isUser: true, timestamp: DateTime.now()));
+      _isLoading = true;
     });
     _inputController.clear();
     _scrollToBottom();
 
-    Timer(const Duration(milliseconds: 1800), () {
+    try {
+      final result = await ref.read(apiClientProvider).post('/ai/explain', {
+        'question': text,
+        'language': _language,
+      }) as Map<String, dynamic>;
+
+      final explanation = result['explanation'] as String? ?? '';
       if (!mounted) return;
-
-      String reply = '';
-      final String q = query.toLowerCase();
-
-      if (q.contains('article 14')) {
-        reply =
-            'Article 14 guarantees Equality before Law.\n\nIt means two things:\n1. No person is above the law — whether you\'re a citizen, minister, or the PM.\n2. Equal protection — the State must treat people in similar circumstances equally.\n\nHowever, "reasonable classification" is allowed — the State can treat different groups differently if there\'s a logical basis for it.';
-      } else if (q.contains('speaker')) {
-        reply =
-            'The Speaker of the Lok Sabha is the presiding officer who maintains order, decides who speaks, and interprets rules.\n\nThink of the Speaker as the "referee" of Parliament. They don\'t usually vote, except to break a tie. They must remain impartial once elected.';
-      } else if (q.contains('money bill')) {
-        reply =
-            'A Money Bill deals with taxation, government spending, or borrowing.\n\nKey rules:\n• Can only be introduced in Lok Sabha\n• Speaker decides if a bill is a Money Bill\n• Rajya Sabha can suggest changes within 14 days, but Lok Sabha can ignore them.\n\nThis gives Lok Sabha (the elected house) more power over the nation\'s finances.';
-      } else {
-        reply =
-            'That\'s a great question about "$query".\n\nThis is a concept rooted in Indian civic governance. In simple terms, it relates to the fundamental principles that guide how our democracy operates, ensuring accountability, transparency, and citizen participation.\n\nWould you like me to explore a specific aspect of this topic in more detail?';
-      }
-
       setState(() {
-        _isTyping = false;
-        _messages.add(ChatMessage(
-          text: reply,
-          isUser: false,
-          heading: 'Explain Simply',
-          timestamp: DateTime.now(),
-        ));
+        _messages.add(ChatMessage(text: explanation, isUser: false, timestamp: DateTime.now()));
       });
-      _scrollToBottom();
-    });
+    } catch (e) {
+      if (!mounted) return;
+      String errMsg = 'Sorry, AI is unavailable right now. Try again shortly.';
+      if (e is ApiException && e.statusCode == 429) {
+        errMsg = 'Rate limit reached — try again in a minute.';
+      } else if (e is ApiException && e.statusCode == 503) {
+        errMsg = 'AI provider not configured on this server.';
+      }
+      setState(() {
+        _messages.add(ChatMessage(text: errMsg, isUser: false, timestamp: DateTime.now()));
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _scrollToBottom();
+      }
+    }
   }
 
   @override
@@ -128,6 +109,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     return Scaffold(
       backgroundColor: SwarajColors.cream,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         elevation: 0,
         title: Row(
@@ -143,8 +125,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
               decoration: BoxDecoration(
                 color: SwarajColors.saffron.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(100),
-                border: Border.all(
-                    color: SwarajColors.saffron.withValues(alpha: 0.2)),
+                border:
+                    Border.all(color: SwarajColors.saffron.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [
@@ -169,7 +151,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
               radius: 16,
               backgroundColor: SwarajColors.navy,
               child: Text(
-                'AK',
+                _userInitials,
                 style: SwarajTypography.mono(
                     fontSize: 12,
                     color: Colors.white,
@@ -190,7 +172,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(20),
-              itemCount: _messages.length + (_isTyping ? 1 : 0) + 1,
+              itemCount: _messages.length + (_isLoading ? 1 : 0) + 1,
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return Padding(
@@ -219,8 +201,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
                   );
                 }
 
-                int msgIndex = index - 1;
-                if (msgIndex == _messages.length && _isTyping) {
+                final msgIndex = index - 1;
+                if (msgIndex == _messages.length && _isLoading) {
                   return _buildTypingIndicatorCard();
                 }
 
@@ -240,8 +222,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 const SizedBox(width: 8),
                 _buildSuggestionChip('Who is the Speaker?', Icons.person),
                 const SizedBox(width: 8),
-                _buildSuggestionChip(
-                    'What is a Money Bill?', Icons.receipt_long),
+                _buildSuggestionChip('What is a Money Bill?', Icons.receipt_long),
               ],
             ),
           ),
@@ -259,6 +240,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                   child: TextField(
                     controller: _inputController,
                     onSubmitted: _sendMessage,
+                    enabled: !_isLoading,
                     style: SwarajTypography.body(
                         fontSize: 15, color: SwarajColors.navy),
                     decoration: InputDecoration(
@@ -271,10 +253,20 @@ class _AIChatScreenState extends State<AIChatScreen> {
                     ),
                   ),
                 ),
-                IconButton(
-                  onPressed: () => _sendMessage(_inputController.text),
-                  icon: const Icon(Icons.send, color: SwarajColors.navy),
-                ),
+                _isLoading
+                    ? const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: SwarajColors.navy),
+                        ),
+                      )
+                    : IconButton(
+                        onPressed: () => _sendMessage(_inputController.text),
+                        icon: const Icon(Icons.send, color: SwarajColors.navy),
+                      ),
               ],
             ),
           ),
@@ -285,7 +277,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
   Widget _buildSuggestionChip(String text, IconData icon) {
     return InputChip(
-      onPressed: () => _sendMessage(text),
+      onPressed: _isLoading ? null : () => _sendMessage(text),
       avatar: Icon(icon, size: 14, color: SwarajColors.slate),
       label: Text(text),
       labelStyle:
@@ -329,11 +321,11 @@ class _AIChatScreenState extends State<AIChatScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (!isUser && msg.heading != null) ...[
+                if (!isUser) ...[
                   Row(
                     children: [
                       Text(
-                        msg.heading!.toUpperCase(),
+                        'EXPLAIN SIMPLY',
                         style: SwarajTypography.mono(
                             fontSize: 10, color: SwarajColors.saffron),
                       ),
@@ -374,27 +366,25 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 ),
                 const SizedBox(width: 12),
                 InkWell(
-                  onTap: () => _showMockToast('Copied to clipboard'),
+                  onTap: () async {
+                    await Clipboard.setData(ClipboardData(text: msg.text));
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Copied to clipboard',
+                            style: SwarajTypography.mono(
+                                color: Colors.white, fontSize: 13)),
+                        backgroundColor: SwarajColors.navy,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
                   child: Row(
                     children: [
                       const Icon(Icons.copy,
                           size: 12, color: SwarajColors.slateLight),
                       const SizedBox(width: 4),
                       Text('Copy',
-                          style: SwarajTypography.mono(
-                              fontSize: 10, color: SwarajColors.slateLight)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                InkWell(
-                  onTap: () => _showMockToast('Share link created'),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.share,
-                          size: 12, color: SwarajColors.slateLight),
-                      const SizedBox(width: 4),
-                      Text('Share',
                           style: SwarajTypography.mono(
                               fontSize: 10, color: SwarajColors.slateLight)),
                     ],
@@ -410,35 +400,29 @@ class _AIChatScreenState extends State<AIChatScreen> {
   Widget _buildTypingIndicatorCard() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border:
-                  Border.all(color: SwarajColors.navy.withValues(alpha: 0.08)),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-                bottomRight: Radius.circular(12),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (index) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: CircleAvatar(
-                    radius: 3,
-                    backgroundColor: SwarajColors.navy.withValues(alpha: 0.4),
-                  ),
-                );
-              }),
-            ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: SwarajColors.navy.withValues(alpha: 0.08)),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(12),
+            topRight: Radius.circular(12),
+            bottomRight: Radius.circular(12),
           ),
-        ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (index) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: CircleAvatar(
+                radius: 3,
+                backgroundColor: SwarajColors.navy.withValues(alpha: 0.4),
+              ),
+            );
+          }),
+        ),
       ),
     );
   }

@@ -15,8 +15,10 @@ export class AiController {
 
   @Post("explain")
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  @UsePipes(new ZodValidationPipe(explainSchema))
-  explain(@CurrentUser() _user: AuthenticatedUser, @Body() body: ExplainBody) {
+  explain(
+    @CurrentUser() _user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(explainSchema)) body: ExplainBody
+  ) {
     return this.ai.explain(body);
   }
 }

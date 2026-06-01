@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/api/api_client.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/typography.dart';
 import '../../core/widgets/points_badge.dart';
 
-class DebateScreen extends StatefulWidget {
+class DebateScreen extends ConsumerStatefulWidget {
   final ValueChanged<int> onTabChange;
   final int points;
 
@@ -14,55 +16,96 @@ class DebateScreen extends StatefulWidget {
   });
 
   @override
-  State<DebateScreen> createState() => _DebateScreenState();
+  ConsumerState<DebateScreen> createState() => _DebateScreenState();
 }
 
-class _DebateScreenState extends State<DebateScreen> {
-  bool _hasVoted = false;
-  double _favorPct = 42.0;
-  double _againstPct = 58.0;
+class _DebateScreenState extends ConsumerState<DebateScreen> {
+  Map<String, dynamic>? _debate;
+  bool _isLoading = false;
+  bool _isSubmitting = false;
+  String? _error;
+  String? _selectedSide;
+  final TextEditingController _reflectionController = TextEditingController();
 
-  final TextEditingController _argumentController = TextEditingController();
-  String _activeTab = 'All';
+  @override
+  void initState() {
+    super.initState();
+    _fetchDebate();
+  }
 
   @override
   void dispose() {
-    _argumentController.dispose();
+    _reflectionController.dispose();
     super.dispose();
   }
 
-  void _castVote() {
-    if (_hasVoted) return;
+  Future<void> _fetchDebate() async {
     setState(() {
-      _hasVoted = true;
-      _favorPct = 43.0;
-      _againstPct = 57.0;
+      _isLoading = true;
+      _error = null;
     });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Your vote has been recorded!',
-          style: SwarajTypography.mono(color: Colors.white, fontSize: 13),
-        ),
-        backgroundColor: SwarajColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    try {
+      final data = await ref.read(apiClientProvider).get('/debate/current')
+          as Map<String, dynamic>;
+      if (mounted) setState(() => _debate = data);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.statusCode == 404 ? null : e.message;
+          if (e.statusCode == 404) _debate = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Failed to load debate');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
-  void _publishArgument() {
-    final text = _argumentController.text.trim();
-    if (text.isEmpty) return;
-    _argumentController.clear();
-    FocusScope.of(context).unfocus();
+  Future<void> _submitResponse() async {
+    final side = _selectedSide;
+    final reflection = _reflectionController.text.trim();
+    if (side == null) {
+      _showToast('Please pick a side first');
+      return;
+    }
+    if (reflection.length < 30) {
+      _showToast('Reflection must be at least 30 characters');
+      return;
+    }
+    if (_debate == null) return;
+
+    setState(() => _isSubmitting = true);
+    try {
+      await ref.read(apiClientProvider).post('/debate/respond', {
+        'debateId': _debate!['id'] as String,
+        'side': side,
+        'reflection': reflection,
+      });
+      if (!mounted) return;
+      setState(() {
+        _debate = Map<String, dynamic>.from(_debate!)..['responded'] = true;
+      });
+      _showToast('Your reflection has been published!');
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      _showToast(e.message);
+    } catch (_) {
+      if (!mounted) return;
+      _showToast('Submission failed. Try again.');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  void _showToast(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Argument published!',
+          message,
           style: SwarajTypography.mono(color: Colors.white, fontSize: 13),
         ),
-        backgroundColor: SwarajColors.success,
+        backgroundColor: SwarajColors.navy,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -73,6 +116,7 @@ class _DebateScreenState extends State<DebateScreen> {
     return Scaffold(
       backgroundColor: SwarajColors.cream,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         elevation: 0,
         title: Row(
@@ -106,411 +150,347 @@ class _DebateScreenState extends State<DebateScreen> {
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Divider(
-              color: SwarajColors.navy.withValues(alpha: 0.06), height: 1),
+          preferredSize: const Size.fromHeight(2),
+          child: _isLoading
+              ? const LinearProgressIndicator(
+                  color: SwarajColors.saffron, minHeight: 2)
+              : Divider(
+                  color: SwarajColors.navy.withValues(alpha: 0.06), height: 1),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  'FEATURED MOTION',
-                  style: SwarajTypography.mono(
-                      fontSize: 11, color: SwarajColors.saffron),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '|',
-                  style: SwarajTypography.mono(
-                      fontSize: 11, color: SwarajColors.outlineVariant),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'WEEK 42',
-                  style: SwarajTypography.mono(
-                      fontSize: 11, color: SwarajColors.slateLight),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '🗳️ "25 January — National Voters\' Day. Pledge to vote."',
-              style: SwarajTypography.mono(
-                fontSize: 10,
-                color: SwarajColors.saffron,
-              ).copyWith(fontStyle: FontStyle.italic),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Should voting be mandatory in India?',
-              style: SwarajTypography.headline(
-                  fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'In Favor (${_favorPct.round()}%)',
-                  style: SwarajTypography.mono(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: SwarajColors.saffron,
-                  ),
-                ),
-                Text(
-                  'Against (${_againstPct.round()}%)',
-                  style: SwarajTypography.mono(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: SwarajColors.navy,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Container(
-              height: 10,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: SwarajColors.navy.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Stack(
-                children: [
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      return Container(
-                        width: constraints.maxWidth * (_favorPct / 100.0),
-                        height: double.infinity,
-                        decoration: const BoxDecoration(
-                          color: SwarajColors.saffron,
-                          borderRadius: BorderRadius.horizontal(
-                              left: Radius.circular(100)),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '1,248 students have cast their vote. Participation strengthens democracy.',
-              style: SwarajTypography.body(fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _hasVoted ? null : _castVote,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      _hasVoted ? SwarajColors.success : SwarajColors.navy,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: SwarajColors.success,
-                  disabledForegroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  _hasVoted ? 'VOTED' : 'VOTE NOW',
-                  style: SwarajTypography.mono(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-            const Divider(height: 48),
-            Text(
-              'Your Reflection',
-              style: SwarajTypography.headline(
-                  fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '"Echoing the Viksit Bharat Young Leaders Dialogue — your voice, on the national stage."',
-              style: SwarajTypography.body(
-                fontSize: 12,
-                color: SwarajColors.slateLight,
-              ).copyWith(fontStyle: FontStyle.italic),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border:
-                    Border.all(color: SwarajColors.navy.withValues(alpha: 0.1)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'CONSTRUCT YOUR ARGUMENT',
-                    style: SwarajTypography.mono(
-                        fontSize: 10, color: SwarajColors.slateLight),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _argumentController,
-                    maxLines: 4,
-                    style: SwarajTypography.body(
-                        fontSize: 14, color: SwarajColors.navy),
-                    decoration: InputDecoration(
-                      hintText:
-                          'Consider the constitutional implications, civic duties, and logistical challenges...',
-                      hintStyle: SwarajTypography.body(
-                          fontSize: 14, color: SwarajColors.outline),
-                      border: InputBorder.none,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.link,
-                                size: 18, color: SwarajColors.slateLight),
-                            tooltip: 'Add Source',
-                          ),
-                          IconButton(
-                            onPressed: () => widget.onTabChange(3),
-                            icon: const Icon(Icons.psychology,
-                                size: 18, color: SwarajColors.saffron),
-                            tooltip: 'AI Assist',
-                          ),
-                        ],
-                      ),
-                      ElevatedButton(
-                        onPressed: _publishArgument,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: SwarajColors.navy,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: Text(
-                          'PUBLISH',
-                          style: SwarajTypography.mono(
-                              fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 48),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: ['Public Pulse', 'All', 'Your School', 'Followed']
-                    .map((tab) {
-                  final bool isActive = _activeTab == tab;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(tab),
-                      selected: isActive,
-                      onSelected: (selected) {
-                        if (selected) {
-                          setState(() {
-                            _activeTab = tab;
-                          });
-                        }
-                      },
-                      labelStyle: SwarajTypography.mono(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: isActive ? Colors.white : SwarajColors.navy,
-                      ),
-                      selectedColor: SwarajColors.navy,
-                      backgroundColor: Colors.white,
-                      showCheckmark: false,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(100),
-                        side: BorderSide(
-                          color: isActive
-                              ? SwarajColors.navy
-                              : SwarajColors.navy.withValues(alpha: 0.08),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Column(
-              children: [
-                _buildCommentCard(
-                  author: '@AryanK_24',
-                  school: 'KV No. 1, Delhi',
-                  text:
-                      'Mandatory voting could ensure that the government truly represents the will of the majority. However, we must first address the accessibility of polling stations for rural citizens.',
-                  likes: 24,
-                ),
-                _buildCommentCard(
-                  author: 'DPS Mathura',
-                  school: 'School Profile',
-                  text:
-                      'Rights and duties are two sides of the same coin. If we enjoy the rights of a democracy, it is our duty to participate in its preservation. Mandatory voting is just a nudge toward civic maturity.',
-                  likes: 112,
-                  isFeatured: true,
-                ),
-                _buildCommentCard(
-                  author: '@Meera_99',
-                  school: 'Modern School',
-                  text:
-                      'Doesn\'t forcing someone to vote violate their right to remain neutral? Silence is also a form of speech in a democratic setup.',
-                  likes: 18,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Loading more perspectives...',
-                        style: SwarajTypography.mono(
-                            color: Colors.white, fontSize: 13),
-                      ),
-                      backgroundColor: SwarajColors.navy,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(
-                      color: SwarajColors.navy.withValues(alpha: 0.12)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  'LOAD MORE PERSPECTIVES',
-                  style: SwarajTypography.mono(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: SwarajColors.navy),
-                ),
-              ),
-            ),
-            const SizedBox(height: 48),
-          ],
+      body: RefreshIndicator(
+        onRefresh: _fetchDebate,
+        color: SwarajColors.saffron,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: _buildBody(),
         ),
       ),
     );
   }
 
-  Widget _buildCommentCard({
-    required String author,
-    required String school,
-    required String text,
-    required int likes,
-    bool isFeatured = false,
+  Widget _buildBody() {
+    if (_isLoading && _debate == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.only(top: 60),
+          child: CircularProgressIndicator(color: SwarajColors.saffron),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 60),
+          child: Column(
+            children: [
+              const Icon(Icons.error_outline,
+                  size: 48, color: SwarajColors.slateLight),
+              const SizedBox(height: 16),
+              Text(_error!,
+                  style: SwarajTypography.body(color: SwarajColors.slate)),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _fetchDebate,
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: SwarajColors.navy,
+                    foregroundColor: Colors.white),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_debate == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 60),
+          child: Column(
+            children: [
+              const Icon(Icons.forum_outlined,
+                  size: 56, color: SwarajColors.slateLight),
+              const SizedBox(height: 16),
+              Text('No Active Debate',
+                  style: SwarajTypography.headline(
+                      fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text(
+                'Check back soon — a new motion is coming.',
+                textAlign: TextAlign.center,
+                style: SwarajTypography.body(color: SwarajColors.slate),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final responded = _debate!['responded'] as bool? ?? false;
+    final topicEn = _debate!['topicEn'] as String? ?? '';
+    final forSummary = _debate!['forSummaryEn'] as String? ?? '';
+    final againstSummary = _debate!['againstSummaryEn'] as String? ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'FEATURED MOTION',
+          style: SwarajTypography.mono(
+              fontSize: 11, color: SwarajColors.saffron),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          topicEn,
+          style: SwarajTypography.headline(
+              fontSize: 26, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 24),
+
+        // For / Against summary cards
+        _buildSideCard(
+          title: 'FOR',
+          content: forSummary,
+          color: SwarajColors.success,
+        ),
+        const SizedBox(height: 12),
+        _buildSideCard(
+          title: 'AGAINST',
+          content: againstSummary,
+          color: SwarajColors.error,
+        ),
+        const Divider(height: 40),
+
+        if (responded)
+          _buildRespondedState()
+        else
+          _buildResponseForm(),
+
+        const SizedBox(height: 48),
+      ],
+    );
+  }
+
+  Widget _buildSideCard({
+    required String title,
+    required String content,
+    required Color color,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isFeatured
-              ? SwarajColors.saffron.withValues(alpha: 0.3)
-              : SwarajColors.navy.withValues(alpha: 0.08),
-          width: isFeatured ? 1.5 : 1.0,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              if (isFeatured) ...[
-                const Icon(Icons.star, size: 14, color: SwarajColors.saffron),
-                const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: Text(
+              title,
+              style: SwarajTypography.mono(
+                  fontSize: 10, color: color, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(content, style: SwarajTypography.body(fontSize: 14)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRespondedState() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: SwarajColors.success.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: SwarajColors.success.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: SwarajColors.success, size: 28),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "You've Participated",
+                  style: SwarajTypography.headline(
+                      fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Your reflection is recorded. Political IQ updated.',
+                  style: SwarajTypography.body(
+                      fontSize: 13, color: SwarajColors.slate),
+                ),
               ],
-              Text(
-                author,
-                style: SwarajTypography.mono(
-                    fontSize: 11, color: SwarajColors.navy),
-              ),
-              const Spacer(),
-              Text(
-                school,
-                style: SwarajTypography.mono(
-                    fontSize: 10, color: SwarajColors.slateLight),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            text,
-            style:
-                SwarajTypography.body(fontSize: 14, color: SwarajColors.slate),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              InkWell(
-                onTap: () {},
-                child: Row(
-                  children: [
-                    const Icon(Icons.thumb_up_alt_outlined,
-                        size: 14, color: SwarajColors.slateLight),
-                    const SizedBox(width: 6),
-                    Text(
-                      '$likes',
-                      style: SwarajTypography.mono(
-                          fontSize: 12, color: SwarajColors.slateLight),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
-              InkWell(
-                onTap: () {},
-                child: Row(
-                  children: [
-                    const Icon(Icons.reply,
-                        size: 14, color: SwarajColors.slateLight),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Reply',
-                      style: SwarajTypography.mono(
-                          fontSize: 12, color: SwarajColors.slateLight),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildResponseForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Your Stand',
+          style: SwarajTypography.headline(
+              fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildSideButton(
+                label: 'FOR',
+                color: SwarajColors.success,
+                selected: _selectedSide == 'FOR',
+                onTap: () => setState(() => _selectedSide = 'FOR'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildSideButton(
+                label: 'AGAINST',
+                color: SwarajColors.error,
+                selected: _selectedSide == 'AGAINST',
+                onTap: () => setState(() => _selectedSide = 'AGAINST'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Your Reflection',
+          style: SwarajTypography.headline(
+              fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Min 30 characters. Make a reasoned civic argument.',
+          style: SwarajTypography.body(
+              fontSize: 12, color: SwarajColors.slateLight),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border:
+                Border.all(color: SwarajColors.navy.withValues(alpha: 0.1)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _reflectionController,
+                maxLines: 5,
+                maxLength: 800,
+                style:
+                    SwarajTypography.body(fontSize: 14, color: SwarajColors.navy),
+                decoration: InputDecoration(
+                  hintText:
+                      'Consider the constitutional implications and civic duties...',
+                  hintStyle: SwarajTypography.body(
+                      fontSize: 14, color: SwarajColors.outline),
+                  border: InputBorder.none,
+                  counterStyle: SwarajTypography.mono(
+                      fontSize: 10, color: SwarajColors.slateLight),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => widget.onTabChange(3),
+                    icon: const Icon(Icons.psychology,
+                        size: 18, color: SwarajColors.saffron),
+                    tooltip: 'Ask AI for help',
+                  ),
+                  ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submitResponse,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: SwarajColors.navy,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2),
+                          )
+                        : Text(
+                            'PUBLISH',
+                            style: SwarajTypography.mono(
+                                fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSideButton({
+    required String label,
+    required Color color,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.1) : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? color : SwarajColors.navy.withValues(alpha: 0.1),
+            width: selected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (selected)
+              Icon(Icons.check_circle, size: 16, color: color),
+            if (selected) const SizedBox(width: 6),
+            Text(
+              label,
+              style: SwarajTypography.mono(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: selected ? color : SwarajColors.navy,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

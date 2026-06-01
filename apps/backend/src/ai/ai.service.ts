@@ -1,46 +1,56 @@
 import { BadRequestException, Injectable, ServiceUnavailableException } from "@nestjs/common";
-import OpenAI from "openai";
+import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
 import type { ExplainBody } from "./ai.schemas";
 
 @Injectable()
 export class AiService {
-  private client: OpenAI | null = null;
+  private genAI: GoogleGenerativeAI | null = null;
 
   async explain(body: ExplainBody) {
-    const client = this.getClient();
-    const moderation = await client.moderations.create({
-      model: process.env.OPENAI_MODERATION_MODEL ?? "omni-moderation-latest",
-      input: body.question
+    const genAI = this.getClient();
+    const model = genAI.getGenerativeModel({
+      model: process.env.GEMINI_MODEL ?? "gemini-2.0-flash-lite",
+      safetySettings: [
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE }
+      ],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 200 }
     });
-    if (moderation.results.some((result) => result.flagged)) {
+
+    const languageInstruction = body.language === "hi" ? "Reply in simple Hindi." : "Reply in simple English.";
+    const systemPrompt =
+      "You explain Indian civics to Grade 9-12 students. Explain to a 15-year-old in simple language under 100 words. Do not be partisan. Do not act as a chatbot.";
+    const userPrompt = `${languageInstruction}\n\nConcept: ${body.question}`;
+
+    let result;
+    try {
+      result = await model.generateContent(`${systemPrompt}\n\n${userPrompt}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("SAFETY") || msg.includes("blocked")) {
+        throw new BadRequestException("Question cannot be processed safely");
+      }
+      throw e;
+    }
+
+    const candidate = result.response.candidates?.[0];
+    if (!candidate || candidate.finishReason === "SAFETY") {
       throw new BadRequestException("Question cannot be processed safely");
     }
 
-    const languageInstruction = body.language === "hi" ? "Reply in simple Hindi." : "Reply in simple English.";
-    const completion = await client.chat.completions.create({
-      model: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
-      temperature: 0.2,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You explain Indian civics to Grade 9-12 students. Explain to a 15-year-old in simple language under 100 words. Do not be partisan. Do not continue as a chatbot."
-        },
-        { role: "user", content: `${languageInstruction}\n\nConcept: ${body.question}` }
-      ]
-    });
-
     return {
-      explanation: completion.choices[0]?.message.content?.trim() ?? "",
-      model: completion.model
+      explanation: result.response.text().trim(),
+      model: process.env.GEMINI_MODEL ?? "gemini-2.0-flash-lite"
     };
   }
 
   private getClient() {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       throw new ServiceUnavailableException("AI provider is not configured");
     }
-    this.client ??= new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    return this.client;
+    this.genAI ??= new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    return this.genAI;
   }
 }

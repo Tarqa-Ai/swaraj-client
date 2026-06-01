@@ -15,7 +15,18 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix("api");
   app.enableCors({
-    origin: process.env.ADMIN_ORIGIN?.split(",") ?? ["http://localhost:3000"],
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        callback(null, true);
+      } else {
+        const allowedOrigins = process.env.ADMIN_ORIGIN?.split(",") ?? ["http://localhost:3000"];
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error("Not allowed by CORS"));
+        }
+      }
+    },
     credentials: true
   });
 

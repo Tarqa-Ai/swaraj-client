@@ -231,7 +231,7 @@ export class AdminService {
   }
 
   deleteStudent(id: string) {
-    return this.prisma.user.update({ where: { id }, data: { deletedAt: new Date(), refreshTokenHash: null } });
+    return this.prisma.user.update({ where: { id }, data: { deletedAt: new Date() } });
   }
 
   listAchievements() {

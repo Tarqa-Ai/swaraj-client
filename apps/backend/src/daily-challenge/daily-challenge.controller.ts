@@ -18,8 +18,10 @@ export class DailyChallengeController {
   }
 
   @Post("submit")
-  @UsePipes(new ZodValidationPipe(dailyChallengeSubmitSchema))
-  submit(@CurrentUser() user: AuthenticatedUser, @Body() body: DailyChallengeSubmitBody) {
+  submit(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(dailyChallengeSubmitSchema)) body: DailyChallengeSubmitBody
+  ) {
     return this.dailyChallenge.submit(user.id, body);
   }
 
