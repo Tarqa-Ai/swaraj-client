@@ -46,12 +46,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     return useAuthStore.persist.onFinishHydration(() => setAuthHydrated(true));
   }, []);
 
-  useEffect(() => {
-    if (!authHydrated || pathname === "/login") return;
-    if (!accessToken) router.replace("/login");
-  }, [accessToken, authHydrated, pathname, router]);
+  const publicRoutes = ["/", "/login", "/privacy", "/terms"];
+  const isPublicRoute = publicRoutes.includes(pathname);
 
-  if (pathname === "/login") return <>{children}</>;
+  useEffect(() => {
+    if (!authHydrated || isPublicRoute) return;
+    if (!accessToken) router.replace("/login");
+  }, [accessToken, authHydrated, isPublicRoute, router]);
+
+  if (isPublicRoute) return <>{children}</>;
   if (!authHydrated) return <div className="min-h-screen bg-[#fbfaf6]" />;
 
   return (

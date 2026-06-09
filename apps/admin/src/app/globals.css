@@ -33,3 +33,100 @@ select {
 ::selection {
   background: rgba(255, 157, 37, 0.24);
 }
+
+/* 3D and Animation Utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.translate-z-10 {
+  transform: translateZ(10px);
+}
+
+.translate-z-20 {
+  transform: translateZ(20px);
+}
+
+.translate-z-30 {
+  transform: translateZ(30px);
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-15px) rotate(2deg);
+  }
+}
+
+@keyframes float-medium {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-25px) rotate(-3deg);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(1.08);
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-medium 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 10s ease-in-out infinite;
+}
+
+/* Isometric Card Rotation */
+.isometric-tilt {
+  transform: rotateX(25deg) rotateY(-15deg) rotateZ(5deg);
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.6s ease;
+}
+
+.isometric-tilt:hover {
+  transform: rotateX(20deg) rotateY(-8deg) rotateZ(2deg) translateY(-10px);
+  box-shadow: 0 30px 60px rgba(7, 29, 54, 0.18), 0 0 40px rgba(255, 157, 37, 0.1);
+}
+
+/* 3D card tilt wrapper */
+.card-3d {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-style: preserve-3d;
+}
+
+.card-3d:hover {
+  transform: translateY(-8px) rotateX(10deg) rotateY(-6deg);
+}
+
+/* Mesh grid background */
+.bg-grid-mesh {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(232, 225, 214, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(232, 225, 214, 0.25) 1px, transparent 1px);
+}
+
