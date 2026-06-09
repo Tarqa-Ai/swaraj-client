@@ -3,6 +3,7 @@ WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml ./
 COPY apps/backend/package.json apps/backend/package.json
+COPY apps/admin/package.json apps/admin/package.json
 COPY packages/shared-types/package.json packages/shared-types/package.json
 COPY packages/shared-utils/package.json packages/shared-utils/package.json
 RUN pnpm install --filter @swaraj/backend... --frozen-lockfile=false
