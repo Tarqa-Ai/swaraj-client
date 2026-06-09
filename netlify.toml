@@ -1,0 +1,8 @@
+[build]
+  base = "apps/admin"
+  command = "pnpm build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  PNPM_VERSION = "11.1.3"
