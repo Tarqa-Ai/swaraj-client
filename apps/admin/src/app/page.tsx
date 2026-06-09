@@ -749,7 +749,7 @@ export default function Home() {
 
             <div className="flex flex-col lg:flex-row items-center justify-center gap-4 pt-6">
               <a 
-                href="https://drive.google.com/file/d/1CDLW1_9wcGEC83WUTD8zcWZxiyGHJF8U/view?usp=sharing" 
+                href="https://drive.google.com/drive/folders/1knoMacmpDaxReoOqSLzvS3o6pu8A1ovw?usp=sharing" 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full lg:w-auto bg-white text-slate-900 font-dm-sans text-sm font-semibold py-3.5 px-8 rounded-full hover:bg-slate-100 transition shadow-lg flex items-center justify-center gap-2"
