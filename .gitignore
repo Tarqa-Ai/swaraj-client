@@ -24,3 +24,4 @@ android/.gradle
 *.ipa
 netlify.md
 render.md
+run.md

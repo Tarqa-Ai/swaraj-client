@@ -25,8 +25,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SwarajCacheService.init();
   await Supabase.initialize(
-    url: const String.fromEnvironment('SUPABASE_URL'),
-    anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY'),
+    url: const String.fromEnvironment(
+      'SUPABASE_URL',
+      defaultValue: 'https://mocwoshzlcbwbjgsdctd.supabase.co',
+    ),
+    anonKey: const String.fromEnvironment(
+      'SUPABASE_ANON_KEY',
+      defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vY3dvc2h6bGNid2JqZ3NkY3RkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyODg1MDQsImV4cCI6MjA5NTg2NDUwNH0.baIJrQJoUVX0XpjOMxh5VaELTxQ38lOZfB7dY53SHYw',
+    ),
   );
   runApp(const ProviderScope(child: SwarajApp()));
 }

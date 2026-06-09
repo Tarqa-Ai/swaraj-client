@@ -56,3 +56,11 @@ jobs:
         run: flutter analyze
       - working-directory: apps/mobile
         run: flutter test
+      - name: Build Release APK
+        working-directory: apps/mobile
+        run: flutter build apk --release
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
