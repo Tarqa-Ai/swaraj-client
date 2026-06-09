@@ -4,6 +4,8 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml ./
 COPY apps/backend/package.json apps/backend/package.json
 COPY packages/ packages/
+RUN ls -laR
+RUN exit 1
 RUN pnpm install --filter @swaraj/backend... --frozen-lockfile=false
 
 FROM deps AS build
