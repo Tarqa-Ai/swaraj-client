@@ -87,18 +87,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   int get _iq => ((_profile?['politicalIq'] as num?) ?? 0).toInt();
   int get _streak => ((_profile?['streakCount'] as num?) ?? 0).toInt();
 
-  void _showToast(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: SwarajTypography.mono(color: Colors.white, fontSize: 13),
-        ),
-        backgroundColor: SwarajColors.navy,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {

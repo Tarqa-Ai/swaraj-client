@@ -38,8 +38,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   @override
   void dispose() {
     _timer?.cancel();
-    for (var c in _controllers) c.dispose();
-    for (var f in _focusNodes) f.dispose();
+    for (var c in _controllers) {
+      c.dispose();
+    }
+    for (var f in _focusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
@@ -98,13 +102,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
             email: widget.email,
             code: code,
           );
+      final phone = await ref.read(sessionStoreProvider).getPhone() ?? '';
       if (!mounted) return;
       final isNewUser = user['onboardingCompletedAt'] == null;
       if (isNewUser) {
         Navigator.pushReplacementNamed(
           context,
           '/setup',
-          arguments: {'phoneNumber': await ref.read(sessionStoreProvider).getPhone() ?? ''},
+          arguments: {'phoneNumber': phone},
         );
       } else {
         Navigator.pushReplacementNamed(context, '/dashboard');

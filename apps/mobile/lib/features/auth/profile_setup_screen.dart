@@ -67,7 +67,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   bool _canProceedStep2() => _selectedSchoolId != null;
 
-  bool _canProceedStep3() => _selectedLanguage.isNotEmpty;
 
   Future<void> _nextStep() async {
     if (_currentStep == 1 && !_canProceedStep1()) {

@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 class SwarajConfig {
   static String get apiBaseUrl {
