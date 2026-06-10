@@ -28,7 +28,7 @@ jobs:
       JWT_ACCESS_SECRET: ci-access-secret-minimum-32-characters-long
       JWT_REFRESH_SECRET: ci-refresh-secret-minimum-32-characters-long
       # Required for admin Next.js build
-      NEXT_PUBLIC_API_URL: https://swaraj-backend-dkgn.onrender.com/api
+      NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
       AUTH_SECRET: ci-nextauth-secret-minimum-32-characters-long-placeholder
     steps:
       - uses: actions/checkout@v4
@@ -82,16 +82,16 @@ jobs:
         working-directory: apps/mobile
         run: |
           flutter build apk --release \
-            --dart-define=API_URL=https://swaraj-backend-dkgn.onrender.com/api \
-            --dart-define=SUPABASE_URL=https://mocwoshzlcbwbjgsdctd.supabase.co \
+            --dart-define=API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
       - name: Build Release AAB (main branch — Play Store)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         working-directory: apps/mobile
         run: |
           flutter build appbundle --release \
-            --dart-define=API_URL=https://swaraj-backend-dkgn.onrender.com/api \
-            --dart-define=SUPABASE_URL=https://mocwoshzlcbwbjgsdctd.supabase.co \
+            --dart-define=API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
       - name: Upload APK artifact (PRs)
         if: github.event_name == 'pull_request'
@@ -125,8 +125,8 @@ jobs:
         working-directory: apps/mobile
         run: |
           flutter build ios --release --no-codesign \
-            --dart-define=API_URL=https://swaraj-backend-dkgn.onrender.com/api \
-            --dart-define=SUPABASE_URL=https://mocwoshzlcbwbjgsdctd.supabase.co \
+            --dart-define=API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
       - name: Upload iOS build artifact
         uses: actions/upload-artifact@v4

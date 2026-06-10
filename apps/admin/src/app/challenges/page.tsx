@@ -31,7 +31,7 @@ const challengeQuestionsExample = `[
     "explanationHi": "Short Hindi explanation."
   }
 ]`;
-
+// nice
 export default function ChallengesPage() {
   return (
     <ResourcePage

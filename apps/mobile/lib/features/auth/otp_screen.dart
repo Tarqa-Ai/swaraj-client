@@ -69,7 +69,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       _error = null;
     });
   }
-
+// Nice
   Future<void> _resendOTP() async {
     setState(() => _error = null);
     try {
