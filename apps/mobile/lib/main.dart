@@ -14,6 +14,7 @@ import 'features/dashboard/home_screen.dart';
 import 'features/learning/learn_screen.dart';
 import 'features/learning/lesson_screen.dart';
 import 'features/learning/module_detail_screen.dart';
+import 'features/learning/quiz_screen.dart';
 import 'features/debate/debate_screen.dart';
 import 'features/ai_assistant/ai_chat_screen.dart';
 import 'features/profile/profile_screen.dart';
@@ -78,6 +79,14 @@ class SwarajApp extends StatelessWidget {
             return MaterialPageRoute(
                 builder: (_) =>
                     LessonScreen(lessonId: lessonId, moduleId: moduleId));
+          case '/quiz':
+            final quizArgs = settings.arguments as Map?;
+            final quizData =
+                (quizArgs?['quiz'] as Map<String, dynamic>?) ?? {};
+            final quizModuleId = quizArgs?['moduleId'] as String? ?? '';
+            return MaterialPageRoute(
+                builder: (_) =>
+                    QuizScreen(quiz: quizData, moduleId: quizModuleId));
           case '/cert-locked':
             return MaterialPageRoute(builder: (_) => const CertLockedScreen());
           case '/certificate':

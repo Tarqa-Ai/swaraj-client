@@ -2,12 +2,12 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { 
-  Award, 
-  BookOpen, 
-  HelpCircle, 
-  MessageSquare, 
-  Smartphone, 
+import {
+  Award,
+  BookOpen,
+  HelpCircle,
+  MessageSquare,
+  Smartphone,
   ArrowRight,
   Shield,
   Star,
@@ -45,7 +45,7 @@ interface CitizenProfile {
 export default function Home() {
   // Playground State
   const [activeTab, setActiveTab] = useState<"quiz" | "ai" | "debate">("quiz");
-  
+
   // Quiz State
   const [selectedQuizOption, setSelectedQuizOption] = useState<number | null>(null);
   const quizAnswered = selectedQuizOption !== null;
@@ -135,7 +135,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-dm-sans selection:bg-slate-200 relative overflow-x-hidden">
-      
+
       {/* Premium Minimal Header */}
       <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100 px-6 py-4 transition-all">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
@@ -148,22 +148,22 @@ export default function Home() {
               <p className="font-dm-sans text-[10px] text-slate-500 font-medium">Civic Learning</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-6">
-            <Link 
-              href="#showcase" 
+            <Link
+              href="#showcase"
               className="hidden md:inline-block font-dm-sans text-sm font-medium text-slate-500 hover:text-slate-900 transition"
             >
               Dashboard
             </Link>
-            <Link 
-              href="#playground" 
+            <Link
+              href="#playground"
               className="hidden md:inline-block font-dm-sans text-sm font-medium text-slate-500 hover:text-slate-900 transition"
             >
               Interactive Demo
             </Link>
-            <Link 
-              href="#download" 
+            <Link
+              href="#download"
               className="bg-slate-900 text-white font-dm-sans text-sm font-medium px-5 py-2.5 rounded-full hover:bg-slate-800 transition duration-300 shadow-sm"
             >
               Get the App
@@ -177,25 +177,25 @@ export default function Home() {
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm text-slate-600 font-dm-sans text-xs font-medium mb-8">
           <Sparkles size={14} className="text-slate-400" /> Civic Education 2.0
         </div>
-        
+
         <h1 className="font-syne text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-slate-900 max-w-5xl leading-[1.1]">
           The Architecture of <br />
           <span className="text-slate-400">Democracy, Decoded.</span>
         </h1>
-        
+
         <p className="mt-6 max-w-2xl text-lg text-slate-500 font-dm-sans leading-relaxed">
           Empowering Grade 9–12 students to become informed, active citizens through structured curriculum exploration, peer-to-peer debates, and AI-powered evaluation metrics.
         </p>
-        
+
         <div className="mt-10 flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          <Link 
-            href="#download" 
+          <Link
+            href="#download"
             className="w-full sm:w-auto bg-slate-900 text-white font-dm-sans font-medium py-3.5 px-8 rounded-full hover:bg-slate-800 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
           >
             Download App <ArrowRight size={18} />
           </Link>
-          <Link 
-            href="#showcase" 
+          <Link
+            href="#showcase"
             className="w-full sm:w-auto bg-white border border-slate-200 text-slate-700 font-dm-sans font-medium py-3.5 px-8 rounded-full hover:bg-slate-50 transition-all shadow-sm"
           >
             View Dashboard
@@ -203,9 +203,9 @@ export default function Home() {
         </div>
 
         <div className="mt-20 w-full max-w-5xl rounded-3xl overflow-hidden border border-slate-200 shadow-2xl shadow-slate-200/50 relative bg-white flex justify-center items-center p-2">
-           <img 
-            className="w-full rounded-2xl object-cover aspect-video mix-blend-multiply opacity-90" 
-            alt="A clean, minimalist representation of parliamentary architecture" 
+          <img
+            className="w-full rounded-2xl object-cover aspect-video mix-blend-multiply opacity-90"
+            alt="A clean, minimalist representation of parliamentary architecture"
             src="/hero.jpg"
           />
         </div>
@@ -239,7 +239,7 @@ export default function Home() {
               </div>
               <h4 className="font-syne text-xl font-semibold text-white relative z-10">AI Evaluation</h4>
               <p className="font-dm-sans text-sm text-slate-400 leading-relaxed mt-3 relative z-10">
-                Advanced Gemini-powered grading system providing instant, nuanced feedback on subjective civic inquiries.
+                Advanced AI-powered grading system providing instant, nuanced feedback on subjective civic inquiries.
               </p>
             </div>
 
@@ -283,7 +283,7 @@ export default function Home() {
               <h3 className="font-syne text-3xl font-bold text-slate-900">Citizen Dashboard</h3>
               <p className="mt-2 text-slate-500 font-dm-sans">Real-time student progress and engagement metrics.</p>
             </div>
-            
+
             {/* Student Profile Toggles */}
             <div className="flex bg-slate-100 p-1.5 rounded-full border border-slate-200 w-fit">
               {citizenProfiles.map((p, idx) => (
@@ -300,10 +300,10 @@ export default function Home() {
 
           {/* Citizen Dashboard Grid */}
           <div className="grid md:grid-cols-12 gap-6 items-stretch">
-            
+
             {/* Column Left: Stats & Activity */}
             <div className="md:col-span-4 flex flex-col gap-6">
-              
+
               {/* Profile Card */}
               <div className="bg-white border border-slate-200 shadow-sm rounded-3xl p-8 flex flex-col gap-6 h-full">
                 <div className="flex justify-between items-start">
@@ -399,19 +399,19 @@ export default function Home() {
             <div className="md:col-span-4 bg-white border border-slate-200 shadow-sm rounded-3xl p-8 flex flex-col justify-between">
               <div>
                 <p className="font-dm-sans text-xs font-semibold text-slate-400 uppercase tracking-wider mb-6">Certificate Vault</p>
-                
+
                 {/* Certificate Template Box */}
                 <div className="border border-slate-200 bg-slate-50 rounded-2xl p-6 text-center relative overflow-hidden shadow-inner flex flex-col items-center justify-center min-h-[300px]">
                   <Shield size={120} className="text-slate-200 absolute opacity-30 pointer-events-none" />
 
                   <p className="font-dm-sans text-[9px] font-bold tracking-widest text-slate-400 uppercase relative z-10">National Civic Merit</p>
                   <h5 className="font-syne text-lg font-bold text-slate-900 mt-2 tracking-tight relative z-10">CERTIFICATE OF ACHIEVEMENT</h5>
-                  
+
                   <div className="w-12 h-px bg-slate-300 mx-auto my-4 relative z-10"></div>
-                  
+
                   <p className="font-dm-sans text-xs font-medium text-slate-500 relative z-10">PROUDLY PRESENTED TO</p>
                   <p className="font-syne text-2xl font-bold text-slate-900 mt-2 relative z-10">{currentCitizen.name}</p>
-                  
+
                   <div className="grid grid-cols-2 w-full mt-8 pt-4 border-t border-slate-200 text-left relative z-10">
                     <div>
                       <p className="text-[9px] text-slate-400 font-semibold uppercase font-dm-sans mb-1">Issued On</p>
@@ -451,24 +451,24 @@ export default function Home() {
           </div>
 
           <div className="mx-auto max-w-5xl bg-white border border-slate-200 shadow-xl shadow-slate-200/50 rounded-3xl overflow-hidden grid md:grid-cols-12">
-            
+
             {/* Sidebar Navigation */}
             <div className="md:col-span-4 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-4 flex flex-row md:flex-col gap-2 overflow-x-auto">
-              <button 
+              <button
                 onClick={() => setActiveTab("quiz")}
                 className={`flex-1 md:flex-initial text-left px-5 py-4 text-sm font-dm-sans font-medium rounded-2xl transition-all flex items-center gap-3 whitespace-nowrap ${activeTab === "quiz" ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "text-slate-500 border border-transparent hover:bg-slate-100 hover:text-slate-900"}`}
               >
                 <HelpCircle size={18} />
                 Constitutional Quiz
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab("ai")}
                 className={`flex-1 md:flex-initial text-left px-5 py-4 text-sm font-dm-sans font-medium rounded-2xl transition-all flex items-center gap-3 whitespace-nowrap ${activeTab === "ai" ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "text-slate-500 border border-transparent hover:bg-slate-100 hover:text-slate-900"}`}
               >
                 <Sparkles size={18} />
-                Gemini AI Grader
+                AI Grader
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab("debate")}
                 className={`flex-1 md:flex-initial text-left px-5 py-4 text-sm font-dm-sans font-medium rounded-2xl transition-all flex items-center gap-3 whitespace-nowrap ${activeTab === "debate" ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "text-slate-500 border border-transparent hover:bg-slate-100 hover:text-slate-900"}`}
               >
@@ -479,7 +479,7 @@ export default function Home() {
 
             {/* Sandbox Workspace */}
             <div className="md:col-span-8 p-8 md:p-12 flex flex-col justify-center min-h-[420px] bg-white">
-              
+
               {/* Tab 1: Quiz */}
               {activeTab === "quiz" && (
                 <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300">
@@ -529,12 +529,12 @@ export default function Home() {
                         <div>
                           <p className="font-dm-sans text-sm font-semibold text-slate-900">Educational Context</p>
                           <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                            {selectedQuizOption !== null && quizOptions[selectedQuizOption].correct 
-                              ? "Correct! " 
+                            {selectedQuizOption !== null && quizOptions[selectedQuizOption].correct
+                              ? "Correct! "
                               : "Incorrect. "}
                             {quizOptions[2].explanation}
                           </p>
-                          <button 
+                          <button
                             onClick={() => setSelectedQuizOption(null)}
                             className="mt-4 text-sm font-medium text-slate-900 hover:text-slate-600 transition flex items-center gap-1.5"
                           >
@@ -551,7 +551,7 @@ export default function Home() {
               {activeTab === "ai" && (
                 <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300">
                   <div>
-                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 font-dm-sans text-xs font-semibold uppercase tracking-wider mb-4">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 font-dm-sans text-xs font-semibold uppercase tracking-wider mb-4">
                       AI Simulator
                     </div>
                     <h3 className="font-syne text-2xl font-bold text-slate-900 leading-snug">
@@ -591,7 +591,7 @@ export default function Home() {
                           Score: {aiResult.score}/10
                         </span>
                       </div>
-                      
+
                       <div className="space-y-2.5 pt-2">
                         {aiResult.points.map((p, i) => (
                           <div key={i} className="flex items-start gap-3 text-sm text-slate-600">
@@ -654,7 +654,7 @@ export default function Home() {
                         </p>
                       )}
                     </div>
-                    
+
                     <div className="flex gap-3">
                       <button
                         onClick={() => handleDebateVote("pro")}
@@ -740,7 +740,7 @@ export default function Home() {
 
           <div className="relative z-10 max-w-2xl mx-auto space-y-8">
             <h2 className="font-syne text-4xl sm:text-5xl font-bold text-white leading-tight">
-              Ready to decode <br/>
+              Ready to decode <br />
               <span className="text-slate-400">your democracy?</span>
             </h2>
             <p className="font-dm-sans text-slate-300 text-lg">
@@ -748,15 +748,15 @@ export default function Home() {
             </p>
 
             <div className="flex flex-col lg:flex-row items-center justify-center gap-4 pt-6">
-              <a 
-                href="https://drive.google.com/drive/folders/1knoMacmpDaxReoOqSLzvS3o6pu8A1ovw?usp=sharing" 
+              <a
+                href="https://drive.google.com/drive/folders/1knoMacmpDaxReoOqSLzvS3o6pu8A1ovw?usp=sharing"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full lg:w-auto bg-white text-slate-900 font-dm-sans text-sm font-semibold py-3.5 px-8 rounded-full hover:bg-slate-100 transition shadow-lg flex items-center justify-center gap-2"
               >
                 <Download size={18} /> Download APK (Android)
               </a>
-              
+
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
                 <div className="w-full sm:w-auto bg-slate-800/40 text-slate-400 border border-slate-800 font-dm-sans text-xs font-medium py-3.5 px-6 rounded-full flex items-center justify-center gap-3 cursor-not-allowed select-none">
                   <span>Google Play Store</span>
@@ -778,7 +778,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="bg-white border-t border-slate-100 py-16 px-6">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-start justify-between gap-12">
-          
+
           <div className="space-y-4 max-w-sm">
             <div className="flex items-center gap-2.5">
               <div className="h-8 w-8 rounded-full bg-slate-900 flex items-center justify-center shadow-sm">
@@ -804,8 +804,8 @@ export default function Home() {
             © 2026 Siddharth Sharma. All rights reserved.
           </p>
           <div className="flex gap-6 text-slate-400 text-sm">
-             <Link href="/privacy" className="hover:text-slate-900 transition">Privacy Policy</Link>
-             <Link href="/terms" className="hover:text-slate-900 transition">Terms of Service</Link>
+            <Link href="/privacy" className="hover:text-slate-900 transition">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-slate-900 transition">Terms of Service</Link>
           </div>
         </div>
       </footer>

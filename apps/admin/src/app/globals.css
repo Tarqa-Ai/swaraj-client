@@ -122,6 +122,12 @@ select {
   transform: translateY(-8px) rotateX(10deg) rotateY(-6deg);
 }
 
+@keyframes slide {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}
+
 /* Mesh grid background */
 .bg-grid-mesh {
   background-size: 40px 40px;

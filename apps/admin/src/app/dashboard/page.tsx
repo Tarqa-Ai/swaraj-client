@@ -2,7 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { Activity, Award, BarChart3, BookOpenCheck, ClipboardList, HelpCircle, MessageSquare, ShieldCheck, Trophy, Users } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Activity, Award, BarChart3, BookOpenCheck, ClipboardList, HelpCircle, MessageSquare, TrendingUp, Trophy, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import { Card, Skeleton } from "@/components/ui";
 
@@ -30,19 +31,37 @@ const quickActions = [
   { href: "/debates", label: "Active Debate", helper: "Control the live For/Against topic", icon: MessageSquare }
 ];
 
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export default function DashboardPage() {
+  const { data: session } = useSession();
   const { data, isLoading, error } = useQuery({ queryKey: ["analytics"], queryFn: () => api<Analytics>("/admin/analytics") });
 
   if (isLoading) {
-    return <div className="grid gap-4 md:grid-cols-3">{Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} className="h-32" />)}</div>;
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-28" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32" />)}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-64" />)}
+        </div>
+      </div>
+    );
   }
   if (error) return <Card className="text-red-700">Unable to load analytics.</Card>;
 
   const metrics = [
-    { label: "Total citizens", value: data?.totalUsers ?? 0, icon: Users },
-    { label: "Active citizens", value: data?.activeUsers ?? 0, icon: Activity },
-    { label: "Average Political IQ", value: data?.averagePoliticalIq ?? 0, icon: BarChart3 },
-    { label: "Module completion", value: `${data?.completionPercent ?? 0}%`, icon: Trophy }
+    { label: "Total citizens", value: data?.totalUsers ?? 0, icon: Users, max: 1000 },
+    { label: "Active citizens", value: data?.activeUsers ?? 0, icon: Activity, max: data?.totalUsers || 1 },
+    { label: "Avg. Political IQ", value: data?.averagePoliticalIq ?? 0, icon: BarChart3, max: 1000 },
+    { label: "Module completion", value: `${data?.completionPercent ?? 0}%`, icon: Trophy, max: 100, raw: data?.completionPercent ?? 0 }
   ];
 
   const contentHealth = [
@@ -54,67 +73,83 @@ export default function DashboardPage() {
     { label: "Active debates", value: data?.activeDebates ?? 0 }
   ];
   const topSchools = data?.topSchools ?? [];
+  const firstName = session?.user?.name?.split(" ")[0] ?? "Admin";
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-[#e8e1d6] bg-white p-6 shadow-soft">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      {/* Page header */}
+      <section className="relative overflow-hidden rounded-2xl border border-[#e8e1d6] bg-white p-6 shadow-soft">
+        <div className="absolute right-0 top-0 h-full w-64 bg-[linear-gradient(135deg,rgba(255,157,37,0.06),transparent)]" />
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full bg-[#fff4e5] px-3 py-1 text-[11px] font-extrabold uppercase tracking-normal text-saffron">
-              <ShieldCheck size={14} />
-              App Admin Console
+            <p className="text-sm font-semibold text-slate-400">{greeting()}, {firstName}</p>
+            <h1 className="mt-1 text-3xl font-black tracking-normal text-navy">Swaraj Dashboard</h1>
+            <p className="mt-2 max-w-xl text-sm text-slate-500">
+              Manage learning modules, citizen records, quizzes, and platform analytics.
             </p>
-            <h1 className="mt-4 text-4xl font-black leading-tight tracking-normal text-navy">Swaraj Operations</h1>
-            <p className="mt-2 max-w-2xl text-slate-600">Manage citizen records, learning modules, quizzes, daily challenges, debate topics, certificates, and basic analytics for the mobile app.</p>
           </div>
-          <div className="rounded-lg border border-[#eadfce] bg-[#fbfaf6] px-4 py-3">
-            <p className="text-[10px] font-extrabold uppercase tracking-normal text-slate-400">Scope</p>
-            <p className="mt-1 text-sm font-bold text-navy">MVP content and citizen admin</p>
+          <div className="flex shrink-0 items-center gap-2 rounded-xl border border-[#eadfce] bg-[#fbfaf6] px-4 py-3">
+            <TrendingUp size={16} className="text-saffron" />
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Completion</p>
+              <p className="text-lg font-black text-navy">{data?.completionPercent ?? 0}%</p>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-4">
+      {/* Metrics */}
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {metrics.map((metric) => {
           const Icon = metric.icon;
+          const rawVal = typeof metric.value === "number" ? metric.value : metric.raw ?? 0;
+          const pct = Math.min(100, (rawVal / (metric.max ?? 1)) * 100);
           return (
             <Card key={metric.label} className="relative overflow-hidden">
-              <div className="absolute right-0 top-0 h-20 w-20 rounded-bl-full bg-[#fff4e5]" />
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-extrabold text-slate-600">{metric.label}</p>
-                <div className="relative grid h-10 w-10 place-items-center rounded-lg bg-navy text-saffron">
-                  <Icon size={20} />
+              <div className="flex items-start justify-between">
+                <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">{metric.label}</p>
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#fff4e5] text-saffron">
+                  <Icon size={16} />
                 </div>
               </div>
-              <p className="mt-5 text-3xl font-black tracking-normal text-navy">{metric.value}</p>
+              <p className="mt-4 text-3xl font-black tracking-normal text-navy">{metric.value}</p>
+              <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-[#f0e8dd]">
+                <div
+                  className="h-full rounded-full bg-saffron transition-all"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
             </Card>
           );
         })}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_0.72fr]">
+      {/* Quick actions + Content health */}
+      <section className="grid gap-4 lg:grid-cols-[1fr_0.65fr]">
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-black text-navy">Admin tasks</h2>
-              <p className="mt-1 text-sm text-slate-500">Fast links for the app team.</p>
+              <h2 className="text-base font-black text-navy">Quick actions</h2>
+              <p className="mt-0.5 text-xs text-slate-400">Common admin tasks</p>
             </div>
-            <ClipboardList className="text-saffron" size={22} />
+            <ClipboardList className="text-saffron" size={20} />
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
-                <Link key={action.href} href={action.href} className="rounded-lg border border-[#eadfce] bg-[#fbfaf6] p-4 transition hover:border-saffron hover:bg-[#fff8ed]">
-                  <div className="flex items-center gap-3">
-                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-navy text-saffron">
-                      <Icon size={18} />
-                    </span>
-                    <span>
-                      <span className="block text-sm font-black text-navy">{action.label}</span>
-                      <span className="mt-1 block text-xs font-semibold text-slate-500">{action.helper}</span>
-                    </span>
-                  </div>
+                <Link
+                  key={action.href}
+                  href={action.href}
+                  className="group flex items-center gap-3 rounded-xl border border-[#eadfce] bg-[#fbfaf6] p-3.5 transition hover:-translate-y-0.5 hover:border-saffron/40 hover:bg-[#fff8ed] hover:shadow-md"
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-navy text-saffron transition group-hover:bg-[#102f55]">
+                    <Icon size={17} />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-black text-navy">{action.label}</span>
+                    <span className="mt-0.5 block text-[11px] text-slate-500">{action.helper}</span>
+                  </span>
                 </Link>
               );
             })}
@@ -124,55 +159,40 @@ export default function DashboardPage() {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-black text-navy">Content health</h2>
-              <p className="mt-1 text-sm text-slate-500">Counts from the admin backend.</p>
+              <h2 className="text-base font-black text-navy">Content health</h2>
+              <p className="mt-0.5 text-xs text-slate-400">Live counts from backend</p>
             </div>
-            <BookOpenCheck className="text-saffron" size={22} />
+            <BookOpenCheck className="text-saffron" size={20} />
           </div>
-          <div className="mt-5 divide-y divide-[#f0e8dd]">
+          <div className="mt-4 divide-y divide-[#f5f0ea]">
             {contentHealth.map((item) => (
-              <div key={item.label} className="flex items-center justify-between py-3">
-                <span className="font-semibold text-slate-600">{item.label}</span>
-                <span className="rounded-full bg-[#fff4e5] px-3 py-1 text-sm font-extrabold text-saffron">{item.value}</span>
+              <div key={item.label} className="flex items-center justify-between py-2.5">
+                <span className="text-sm font-semibold text-slate-600">{item.label}</span>
+                <span className="rounded-full bg-[#fff4e5] px-3 py-0.5 text-sm font-extrabold text-saffron">{item.value}</span>
               </div>
             ))}
           </div>
         </Card>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[0.8fr_1fr]">
+      {/* Top schools */}
+      {topSchools.length > 0 && (
         <Card>
-          <h2 className="text-lg font-black text-navy">Top schools</h2>
-          <p className="mt-1 text-sm text-slate-500">Based on citizen onboarding records.</p>
-          <div className="mt-4 divide-y divide-[#f0e8dd]">
-            {topSchools.length > 0 ? topSchools.map((school) => (
-              <div key={school.id} className="flex items-center justify-between py-3">
-                <span className="font-medium">{school.name}</span>
-                <span className="rounded-full bg-[#fff4e5] px-3 py-1 text-sm font-extrabold text-saffron">{school.students} citizens</span>
+          <h2 className="text-base font-black text-navy">Top schools</h2>
+          <p className="mt-0.5 text-xs text-slate-400">Ranked by citizen onboarding</p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {topSchools.map((school, i) => (
+              <div key={school.id} className="flex items-center justify-between rounded-xl border border-[#eadfce] bg-[#fbfaf6] px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-navy text-[11px] font-black text-saffron">{i + 1}</span>
+                  <span className="text-sm font-semibold text-navy">{school.name}</span>
+                </div>
+                <span className="text-xs font-extrabold text-saffron">{school.students}</span>
               </div>
-            )) : <p className="py-4 text-sm text-slate-500">No school data yet.</p>}
+            ))}
           </div>
         </Card>
-
-        <Card className="!border-navy !bg-navy text-white">
-          <h2 className="text-2xl font-black tracking-normal">Wiring notes</h2>
-          <p className="mt-3 text-sm leading-6 text-white/70">This admin panel edits backend records for modules, lessons, quizzes, questions, daily challenges, debates, badges, certificates, and citizens. The mobile app should read these endpoints when backend integration is connected.</p>
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-              <p className="text-[10px] font-extrabold uppercase tracking-normal text-saffron">Quiz</p>
-              <p className="mt-2 text-sm font-semibold text-white">Questions include explanation fields.</p>
-            </div>
-            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-              <p className="text-[10px] font-extrabold uppercase tracking-normal text-saffron">Modules</p>
-              <p className="mt-2 text-sm font-semibold text-white">Order controls app display.</p>
-            </div>
-            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-              <p className="text-[10px] font-extrabold uppercase tracking-normal text-saffron">Users</p>
-              <p className="mt-2 text-sm font-semibold text-white">Citizen details can be corrected.</p>
-            </div>
-          </div>
-        </Card>
-      </section>
+      )}
     </div>
   );
 }

@@ -104,6 +104,9 @@ class _ModuleDetailScreenState extends ConsumerState<ModuleDetailScreen> {
     final lessons = (_module!['lessons'] as List<dynamic>? ?? [])
         .map((l) => Map<String, dynamic>.from(l as Map))
         .toList();
+    final quizzes = (_module!['quizzes'] as List<dynamic>? ?? [])
+        .map((q) => Map<String, dynamic>.from(q as Map))
+        .toList();
     final moduleCompleted = _module!['completed'] as bool? ?? false;
 
     return RefreshIndicator(
@@ -163,8 +166,85 @@ class _ModuleDetailScreenState extends ConsumerState<ModuleDetailScreen> {
               isCompleted: isCompleted,
             );
           }),
+          if (quizzes.isNotEmpty) ...[
+            const Divider(height: 32),
+            Text(
+              'QUIZZES',
+              style: SwarajTypography.mono(
+                  fontSize: 11, color: SwarajColors.slateLight),
+            ),
+            const SizedBox(height: 12),
+            ...quizzes.map((quiz) {
+              final quizTitle = quiz['titleEn'] as String? ?? 'Quiz';
+              final questionCount =
+                  (quiz['questions'] as List<dynamic>?)?.length ?? 0;
+              return _buildQuizTile(quiz: quiz, title: quizTitle, questionCount: questionCount);
+            }),
+          ],
           const SizedBox(height: 32),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuizTile({
+    required Map<String, dynamic> quiz,
+    required String title,
+    required int questionCount,
+  }) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(
+        context,
+        '/quiz',
+        arguments: {'quiz': quiz, 'moduleId': widget.moduleId},
+      ).then((_) => _fetchModule()),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: SwarajColors.saffron.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: SwarajColors.saffron.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: const Icon(Icons.quiz, size: 16, color: SwarajColors.saffron),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: SwarajTypography.body(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: SwarajColors.navy,
+                    ),
+                  ),
+                  Text(
+                    '$questionCount question${questionCount == 1 ? '' : 's'}',
+                    style: SwarajTypography.mono(
+                        fontSize: 11, color: SwarajColors.slateLight),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right,
+                size: 18, color: SwarajColors.slateLight),
+          ],
+        ),
       ),
     );
   }

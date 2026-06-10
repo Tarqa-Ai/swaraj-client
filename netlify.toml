@@ -1,8 +1,11 @@
 [build]
-  base = "apps/admin"
-  command = "pnpm build"
-  publish = ".next"
+  base    = "."
+  command = "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @swaraj/admin build"
+  publish = "apps/admin/.next"
 
 [build.environment]
   NODE_VERSION = "22"
   PNPM_VERSION = "11.1.3"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
