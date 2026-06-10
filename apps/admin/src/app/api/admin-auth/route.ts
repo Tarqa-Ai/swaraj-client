@@ -12,7 +12,7 @@ export async function GET() {
     return NextResponse.json({ error: "No Google ID token in session" }, { status: 401 });
   }
 
-  const backendUrl = process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "https://swaraj-backend-dkgn.onrender.com/api";
+  const backendUrl = process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
   try {
     const res = await fetch(`${backendUrl}/auth/admin/google`, {

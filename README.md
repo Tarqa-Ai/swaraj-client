@@ -72,7 +72,7 @@ S3_ACCESS_KEY_ID=<supabase storage key>
 S3_SECRET_ACCESS_KEY=<supabase storage secret>
 
 # Server
-PUBLIC_API_URL=https://swaraj-backend-dkgn.onrender.com
+PUBLIC_API_URL=https://your-backend.onrender.com
 ADMIN_ORIGIN=https://swaraj.org.in
 ```
 
@@ -93,7 +93,7 @@ flutter run \
 flutter build appbundle \
   --dart-define=SUPABASE_URL=https://<ref>.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=<anon_key> \
-  --dart-define=API_URL=https://swaraj-backend-dkgn.onrender.com/api
+  --dart-define=API_URL=https://your-backend.onrender.com/api
 ```
 
 Output: `apps/mobile/build/app/outputs/bundle/release/app-release.aab`
@@ -104,7 +104,7 @@ Output: `apps/mobile/build/app/outputs/bundle/release/app-release.aab`
 flutter build ios \
   --dart-define=SUPABASE_URL=https://<ref>.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=<anon_key> \
-  --dart-define=API_URL=https://swaraj-backend-dkgn.onrender.com/api
+  --dart-define=API_URL=https://your-backend.onrender.com/api
 ```
 
 Then archive and distribute via Xcode → App Store Connect.
