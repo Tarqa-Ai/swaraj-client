@@ -65,25 +65,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _submitDemo() async {
-    if (_isLoading) return;
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-    try {
-      await ref.read(authRepositoryProvider).demoLogin();
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/dashboard');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString().replaceFirst(RegExp(r'^.*?: '), '');
-      });
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -257,31 +239,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                 ),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: OutlinedButton(
-                  onPressed: _isLoading ? null : _submitDemo,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: SwarajColors.saffron,
-                    side: const BorderSide(color: SwarajColors.saffron, width: 1.5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('USE DEMO ACCOUNT (LOCAL DEV)',
-                          style: SwarajTypography.mono(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: SwarajColors.saffron)),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.bolt, size: 16, color: SwarajColors.saffron),
-                    ],
-                  ),
-                ),
-              ),
+
               const SizedBox(height: 48),
               Center(
                 child: Padding(
