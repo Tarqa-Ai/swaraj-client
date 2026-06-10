@@ -3,7 +3,7 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "https://swaraj-backend-dkgn.onrender.com/api"
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? ""
   },
   outputFileTracingRoot: path.join(__dirname, "../../"),
   images: {
