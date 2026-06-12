@@ -728,6 +728,60 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Founder's Story Section */}
+      <section className="py-24 px-6 bg-slate-50 relative overflow-hidden">
+        <div className="mx-auto max-w-6xl bg-white border border-slate-200 shadow-xl rounded-[2.5rem] p-8 md:p-16 relative z-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
+          <div className="grid md:grid-cols-12 gap-12 items-center">
+            {/* Left side: Image */}
+            <div className="md:col-span-5 flex justify-center">
+              <div className="relative group w-full max-w-sm aspect-[3/4] rounded-2xl overflow-hidden border border-slate-200 shadow-md bg-slate-50">
+                <img 
+                  src="/siddharth.jpg" 
+                  alt="Siddharth Sharma, Founder of Swaraj" 
+                  className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500 ease-in-out scale-100 hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/45 via-transparent to-transparent"></div>
+                <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-sm p-4 rounded-xl border border-slate-100 shadow-sm">
+                  <p className="font-syne text-sm font-bold text-slate-900">Siddharth Sharma</p>
+                  <p className="font-dm-sans text-[10px] text-slate-500 font-semibold uppercase tracking-wider mt-0.5">Founder of Swaraj</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right side: Story */}
+            <div className="md:col-span-7 space-y-6">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 font-dm-sans text-xs font-semibold uppercase tracking-wider">
+                Founder's Message
+              </div>
+              <h2 className="font-syne text-3xl md:text-4xl font-bold tracking-tight text-slate-900 leading-tight">
+                Democracy belongs to <br />
+                <span className="text-slate-400">the next generation.</span>
+              </h2>
+              
+              <div className="space-y-4 font-dm-sans text-[15px] leading-relaxed text-slate-600">
+                <p>
+                  I'm <strong className="text-slate-900 font-semibold">Siddharth Sharma</strong>, a student from Rajasthan and Head Boy at Jayshree Periwal International School. Like most people around me, I grew up on the outside of how decisions actually get made—close enough to feel them, never close enough to understand them.
+                </p>
+                <p>
+                  That gap is why I built Swaraj. I kept meeting students who were sharp and curious but had been taught to see politics as something far away, something meant for adults and for later. I didn't believe that.
+                </p>
+                <p>
+                  The system belongs to them now, not at some distant point when they finally turn eighteen. So I tried to build the thing I wish I'd had: politics explained plainly, in their own language, on their own phones, until understanding it feels ordinary instead of out of reach.
+                </p>
+              </div>
+
+              <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+                <div>
+                  <p className="font-syne text-base font-bold text-slate-900">Siddharth Sharma</p>
+                  <p className="font-dm-sans text-xs text-slate-500 font-medium">Head Boy, JPIS</p>
+                </div>
+                <div className="h-px w-16 bg-slate-200"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Download CTA */}
       <section id="download" className="bg-slate-50 py-24 px-6 border-t border-slate-100">
         <div className="mx-auto max-w-5xl bg-slate-900 rounded-[3rem] p-10 md:p-20 text-center relative overflow-hidden shadow-2xl">
