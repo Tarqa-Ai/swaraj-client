@@ -163,6 +163,12 @@ export default function Home() {
               Interactive Demo
             </Link>
             <Link
+              href="#founder"
+              className="hidden md:inline-block font-dm-sans text-sm font-medium text-slate-500 hover:text-slate-900 transition"
+            >
+              Founder
+            </Link>
+            <Link
               href="#download"
               className="bg-slate-900 text-white font-dm-sans text-sm font-medium px-5 py-2.5 rounded-full hover:bg-slate-800 transition duration-300 shadow-sm"
             >
@@ -729,7 +735,7 @@ export default function Home() {
       </section>
 
       {/* Founder's Story Section */}
-      <section className="py-24 px-6 bg-slate-50 relative overflow-hidden">
+      <section id="founder" className="py-24 px-6 bg-slate-50 relative overflow-hidden">
         <div className="mx-auto max-w-6xl bg-white border border-slate-200 shadow-xl rounded-[2.5rem] p-8 md:p-16 relative z-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
           <div className="grid md:grid-cols-12 gap-12 items-center">
             {/* Left side: Image */}
