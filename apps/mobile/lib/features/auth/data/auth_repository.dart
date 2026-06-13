@@ -7,7 +7,7 @@ final authRepositoryProvider = Provider<AuthRepository>(
     (ref) => AuthRepository(ref.read(apiClientProvider), ref.read(sessionStoreProvider)));
 
 // Test account for development — bypasses real OTP flow via password auth.
-const _testEmail = 'sudhanshutiwari265@gmail.com';
+const _testEmail = 'sudhanshutiwari264@gmail.com';
 const _testOtp = '123456';
 const _testPassword = 'TestSwaraj@123456!';
 
