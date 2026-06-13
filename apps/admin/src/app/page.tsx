@@ -818,10 +818,14 @@ export default function Home() {
               </a>
 
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-                <div className="w-full sm:w-auto bg-slate-800/40 text-slate-400 border border-slate-800 font-dm-sans text-xs font-medium py-3.5 px-6 rounded-full flex items-center justify-center gap-3 cursor-not-allowed select-none">
+                <a
+                  href="https://play.google.com/store/apps/details?id=app.swaraj.mobile"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto bg-slate-800/80 text-white border border-slate-700 font-dm-sans text-xs font-medium py-3.5 px-6 rounded-full flex items-center justify-center gap-3 hover:bg-slate-700 transition"
+                >
                   <span>Google Play Store</span>
-                  <span className="text-[9px] bg-slate-800 text-slate-500 px-2.5 py-0.5 rounded-full font-mono uppercase tracking-wider font-bold">Coming Soon</span>
-                </div>
+                </a>
                 <div className="w-full sm:w-auto bg-slate-800/40 text-slate-400 border border-slate-800 font-dm-sans text-xs font-medium py-3.5 px-6 rounded-full flex items-center justify-center gap-3 cursor-not-allowed select-none">
                   <span>Apple App Store</span>
                   <span className="text-[9px] bg-slate-800 text-slate-500 px-2.5 py-0.5 rounded-full font-mono uppercase tracking-wider font-bold">Coming Soon</span>
