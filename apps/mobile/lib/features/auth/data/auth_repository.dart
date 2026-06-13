@@ -32,7 +32,7 @@ class AuthRepository {
     required String code,
   }) async {
     if (email == _testEmail && code == _testOtp) {
-      await _sessionStore.saveDevToken(_testDevToken);
+      ApiClient.setDevToken(_testDevToken);
     } else {
       await Supabase.instance.client.auth.verifyOTP(
         email: email,
@@ -56,6 +56,7 @@ class AuthRepository {
 
 
   Future<void> logout() async {
+    ApiClient.clearDevToken();
     await _sessionStore.clear();
   }
 }
