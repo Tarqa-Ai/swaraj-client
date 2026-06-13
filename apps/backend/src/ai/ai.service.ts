@@ -1,56 +1,50 @@
 import { BadRequestException, Injectable, ServiceUnavailableException } from "@nestjs/common";
-import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
+import axios from "axios";
 import type { ExplainBody } from "./ai.schemas";
+
+const TARQA_URL = "https://api.tarqaai.com/api/v1/ask";
+const TARQA_MODEL = "deepseek.v3.2";
 
 @Injectable()
 export class AiService {
-  private genAI: GoogleGenerativeAI | null = null;
-
   async explain(body: ExplainBody) {
-    const genAI = this.getClient();
-    const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL ?? "gemini-2.0-flash-lite",
-      safetySettings: [
-        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE }
-      ],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 200 }
-    });
+    const apiKey = process.env.TARQA_API_KEY;
+    if (!apiKey) {
+      throw new ServiceUnavailableException("AI provider is not configured");
+    }
 
     const languageInstruction = body.language === "hi" ? "Reply in simple Hindi." : "Reply in simple English.";
-    const systemPrompt =
-      "You explain Indian civics to Grade 9-12 students. Explain to a 15-year-old in simple language under 100 words. Do not be partisan. Do not act as a chatbot.";
-    const userPrompt = `${languageInstruction}\n\nConcept: ${body.question}`;
+    const message =
+      `You explain Indian civics to Grade 9-12 students. Explain to a 15-year-old in simple language under 100 words. Do not be partisan. Do not act as a chatbot.\n\n` +
+      `${languageInstruction}\n\nConcept: ${body.question}`;
 
-    let result;
+    let responseText: string;
     try {
-      result = await model.generateContent(`${systemPrompt}\n\n${userPrompt}`);
+      const { data } = await axios.post(
+        `${TARQA_URL}?model=${TARQA_MODEL}`,
+        { message },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          timeout: 30_000
+        }
+      );
+      responseText = data?.response ?? data?.answer ?? data?.text ?? data?.content ?? data?.message;
+      if (!responseText) {
+        throw new Error(`Unexpected response shape: ${JSON.stringify(data)}`);
+      }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("SAFETY") || msg.includes("blocked")) {
-        throw new BadRequestException("Question cannot be processed safely");
+      if (axios.isAxiosError(e) && e.response) {
+        throw new BadRequestException(`AI request failed: ${e.response.status}`);
       }
       throw e;
     }
 
-    const candidate = result.response.candidates?.[0];
-    if (!candidate || candidate.finishReason === "SAFETY") {
-      throw new BadRequestException("Question cannot be processed safely");
-    }
-
     return {
-      explanation: result.response.text().trim(),
-      model: process.env.GEMINI_MODEL ?? "gemini-2.0-flash-lite"
+      explanation: responseText.trim(),
+      model: TARQA_MODEL
     };
-  }
-
-  private getClient() {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new ServiceUnavailableException("AI provider is not configured");
-    }
-    this.genAI ??= new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    return this.genAI;
   }
 }
