@@ -741,9 +741,9 @@ export default function Home() {
             {/* Left side: Image */}
             <div className="md:col-span-5 flex justify-center">
               <div className="relative group w-full max-w-sm aspect-[3/4] rounded-2xl overflow-hidden border border-slate-200 shadow-md bg-slate-50">
-                <img 
-                  src="/siddharth.jpg" 
-                  alt="Siddharth Sharma, Founder of Swaraj" 
+                <img
+                  src="/siddharth.jpg"
+                  alt="Siddharth Sharma, Founder of Swaraj"
                   className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500 ease-in-out scale-100 hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/45 via-transparent to-transparent"></div>
@@ -763,7 +763,7 @@ export default function Home() {
                 Democracy belongs to <br />
                 <span className="text-slate-400">the next generation.</span>
               </h2>
-              
+
               <div className="space-y-4 font-dm-sans text-[15px] leading-relaxed text-slate-600">
                 <p>
                   I'm <strong className="text-slate-900 font-semibold">Siddharth Sharma</strong>, a student from Rajasthan and Head Boy at Jayshree Periwal International School. Like most people around me, I grew up on the outside of how decisions actually get made—close enough to feel them, never close enough to understand them.

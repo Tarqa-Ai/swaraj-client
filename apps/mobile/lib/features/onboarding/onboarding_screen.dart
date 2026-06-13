@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/typography.dart';
 
@@ -17,7 +18,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void initState() {
     super.initState();
     _timer = Timer(const Duration(seconds: 4), () {
-      _goToLogin();
+      _goToNextScreen();
     });
   }
 
@@ -27,9 +28,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  void _goToLogin() {
+  void _goToNextScreen() {
     if (mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session != null) {
+        Navigator.pushReplacementNamed(context, '/dashboard');
+      } else {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
     }
   }
 
@@ -38,7 +44,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Scaffold(
       backgroundColor: SwarajColors.navy,
       body: GestureDetector(
-        onTap: _goToLogin,
+        onTap: _goToNextScreen,
         behavior: HitTestBehavior.opaque,
         child: Stack(
           children: [

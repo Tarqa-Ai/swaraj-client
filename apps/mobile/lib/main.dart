@@ -24,18 +24,59 @@ import 'features/admin/admin_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SwarajCacheService.init();
-  await Supabase.initialize(
-    url: const String.fromEnvironment(
-      'SUPABASE_URL',
-      defaultValue: 'https://mocwoshzlcbwbjgsdctd.supabase.co',
-    ),
-    anonKey: const String.fromEnvironment(
-      'SUPABASE_ANON_KEY',
-      defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vY3dvc2h6bGNid2JqZ3NkY3RkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyODg1MDQsImV4cCI6MjA5NTg2NDUwNH0.baIJrQJoUVX0XpjOMxh5VaELTxQ38lOZfB7dY53SHYw',
-    ),
-  );
-  runApp(const ProviderScope(child: SwarajApp()));
+  try {
+    await SwarajCacheService.init();
+
+    String supabaseUrl = const String.fromEnvironment('SUPABASE_URL');
+    if (supabaseUrl.isEmpty) {
+      supabaseUrl = 'https://mocwoshzlcbwbjgsdctd.supabase.co';
+    }
+
+    String supabaseAnonKey = const String.fromEnvironment('SUPABASE_ANON_KEY');
+    if (supabaseAnonKey.isEmpty) {
+      supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vY3dvc2h6bGNid2JqZ3NkY3RkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyODg1MDQsImV4cCI6MjA5NTg2NDUwNH0.baIJrQJoUVX0XpjOMxh5VaELTxQ38lOZfB7dY53SHYw';
+    }
+
+    await Supabase.initialize(
+      url: supabaseUrl,
+      anonKey: supabaseAnonKey,
+    );
+    runApp(const ProviderScope(child: SwarajApp()));
+  } catch (e, stackTrace) {
+    debugPrint('Initialization error: $e');
+    debugPrint('StackTrace: $stackTrace');
+    runApp(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Swaraj Initialization Failed',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Error: $e\n\nThis usually occurs when the app is built without required environment variables (--dart-define) or when network parameters are invalid.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class SwarajApp extends StatelessWidget {

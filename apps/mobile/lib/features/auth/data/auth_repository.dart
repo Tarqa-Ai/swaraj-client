@@ -44,15 +44,6 @@ class AuthRepository {
     }
   }
 
-  Future<Map<String, dynamic>> demoLogin() async {
-    await _sessionStore.saveDemoToken('demo-token-123');
-    await _sessionStore.saveEmail('demo@swaraj.local');
-    await _sessionStore.savePhone('9876543210');
-    final user = await _api.get('/me') as Map<String, dynamic>;
-    final language = user['language'] as String?;
-    if (language != null) await _sessionStore.saveLanguage(language);
-    return user;
-  }
 
   Future<void> logout() async {
     await _sessionStore.clear();

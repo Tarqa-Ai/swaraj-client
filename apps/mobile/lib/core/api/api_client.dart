@@ -3,10 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/config.dart';
-import '../storage/session_store.dart';
 
 final apiClientProvider =
-    Provider<ApiClient>((ref) => ApiClient(ref.read(sessionStoreProvider)));
+    Provider<ApiClient>((ref) => ApiClient());
 
 class ApiException implements Exception {
   ApiException(this.statusCode, this.message);
@@ -18,9 +17,7 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
-  ApiClient(this._session);
-
-  final SessionStore _session;
+  ApiClient();
 
   Future<dynamic> get(String path) => _request('GET', path, null);
   Future<dynamic> post(String path, Map<String, dynamic> body) =>
@@ -35,10 +32,7 @@ class ApiClient {
     String path,
     Map<String, dynamic>? body,
   ) async {
-    String? token = await _session.getDemoToken();
-    if (token == null || token.isEmpty) {
-      token = Supabase.instance.client.auth.currentSession?.accessToken;
-    }
+    final token = Supabase.instance.client.auth.currentSession?.accessToken;
     final headers = <String, String>{
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',

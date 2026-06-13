@@ -9,8 +9,6 @@ class SessionStore {
   static const _keyPhone = 'swaraj_phone';
   static const _keyEmail = 'swaraj_email';
   static const _keyLanguage = 'swaraj_language';
-  static const _keyDemoToken = 'swaraj_demo_token';
-
   Future<void> savePhone(String phone) =>
       _storage.write(key: _keyPhone, value: phone);
   Future<String?> getPhone() => _storage.read(key: _keyPhone);
@@ -22,10 +20,6 @@ class SessionStore {
   Future<void> saveLanguage(String language) =>
       _storage.write(key: _keyLanguage, value: language);
   Future<String?> getLanguage() => _storage.read(key: _keyLanguage);
-
-  Future<void> saveDemoToken(String token) =>
-      _storage.write(key: _keyDemoToken, value: token);
-  Future<String?> getDemoToken() => _storage.read(key: _keyDemoToken);
 
   Future<void> clear() async {
     await _storage.deleteAll();
