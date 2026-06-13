@@ -6,10 +6,10 @@ import '../../../core/storage/session_store.dart';
 final authRepositoryProvider = Provider<AuthRepository>(
     (ref) => AuthRepository(ref.read(apiClientProvider), ref.read(sessionStoreProvider)));
 
-// Test account for development — bypasses real OTP flow via password auth.
+// Test account — bypasses Supabase entirely; backend accepts the hardcoded token.
 const _testEmail = 'sudhanshutiwari264@gmail.com';
 const _testOtp = '123456';
-const _testPassword = 'TestSwaraj@123456!';
+const _testDevToken = 'swaraj-dev-bypass-264';
 
 class AuthRepository {
   AuthRepository(this._api, this._sessionStore);
@@ -32,10 +32,7 @@ class AuthRepository {
     required String code,
   }) async {
     if (email == _testEmail && code == _testOtp) {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: _testEmail,
-        password: _testPassword,
-      );
+      await _sessionStore.saveDevToken(_testDevToken);
     } else {
       await Supabase.instance.client.auth.verifyOTP(
         email: email,

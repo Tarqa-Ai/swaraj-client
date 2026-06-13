@@ -22,25 +22,22 @@ export class JwtAuthGuard implements CanActivate {
     const token = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
     if (!token) throw new UnauthorizedException("Missing bearer token");
 
-    // // Bypassed local development authentication
-    // if (token === "demo-token-123") {
-    //   let user = await this.prisma.user.findFirst({ where: { email: "demo@swaraj.local" } });
-    //   if (!user) {
-    //     user = await this.prisma.user.create({
-    //       data: {
-    //         email: "demo@swaraj.local",
-    //         name: "Demo Student",
-    //         phone: "9876543210",
-    //         grade: 10,
-    //         politicalIq: 150,
-    //         streakCount: 3,
-    //         onboardingCompletedAt: new Date()
-    //       }
-    //     });
-    //   }
-    //   request.user = { id: user.id, phone: user.phone ?? undefined, role: "STUDENT" };
-    //   return true;
-    // }
+    // Dev bypass for test account — never enable in production.
+    if (process.env.NODE_ENV !== "production" && token === "swaraj-dev-bypass-264") {
+      let user = await this.prisma.user.findFirst({ where: { email: "sudhanshutiwari264@gmail.com" } });
+      if (!user) {
+        user = await this.prisma.user.create({
+          data: {
+            email: "sudhanshutiwari264@gmail.com",
+            name: "Test User",
+            phone: "9999999264",
+            onboardingCompletedAt: new Date()
+          }
+        });
+      }
+      request.user = { id: user.id, phone: user.phone ?? undefined, role: "STUDENT" };
+      return true;
+    }
 
     // Path 1: Supabase JWT (student auth) — ES256 via JWKS
     if (process.env.SUPABASE_URL) {
