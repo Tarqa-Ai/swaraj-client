@@ -6,6 +6,11 @@ import '../../../core/storage/session_store.dart';
 final authRepositoryProvider = Provider<AuthRepository>(
     (ref) => AuthRepository(ref.read(apiClientProvider), ref.read(sessionStoreProvider)));
 
+// Test account for development — bypasses real OTP flow via password auth.
+const _testEmail = 'sudhanshutiwari265@gmail.com';
+const _testOtp = '123456';
+const _testPassword = 'TestSwaraj@123456!';
+
 class AuthRepository {
   AuthRepository(this._api, this._sessionStore);
 
@@ -15,6 +20,7 @@ class AuthRepository {
   Future<void> sendOtp({required String email, required String phone}) async {
     await _sessionStore.savePhone(phone);
     await _sessionStore.saveEmail(email);
+    if (email == _testEmail) return;
     await Supabase.instance.client.auth.signInWithOtp(
       email: email,
       shouldCreateUser: true,
@@ -25,11 +31,18 @@ class AuthRepository {
     required String email,
     required String code,
   }) async {
-    await Supabase.instance.client.auth.verifyOTP(
-      email: email,
-      token: code,
-      type: OtpType.email,
-    );
+    if (email == _testEmail && code == _testOtp) {
+      await Supabase.instance.client.auth.signInWithPassword(
+        email: _testEmail,
+        password: _testPassword,
+      );
+    } else {
+      await Supabase.instance.client.auth.verifyOTP(
+        email: email,
+        token: code,
+        type: OtpType.email,
+      );
+    }
     final user = await _api.get('/me') as Map<String, dynamic>;
     final language = user['language'] as String?;
     if (language != null) await _sessionStore.saveLanguage(language);
