@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: Prod
     env:
       SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY_BASE64 }}
 
