@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 const APP_NAME = "Swaraj";
 const SAFFRON = "#FF6B1A";
@@ -8,29 +8,19 @@ const SAFFRON = "#FF6B1A";
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
 
-  private createTransporter(): nodemailer.Transporter | null {
-    const host = process.env.EMAIL_HOST;
-    const user = process.env.EMAIL_USER;
-    const pass = process.env.EMAIL_PASS;
-    if (!host || !user || !pass) return null;
-    return nodemailer.createTransport({
-      host,
-      port: parseInt(process.env.EMAIL_PORT ?? "587"),
-      secure: process.env.EMAIL_SECURE === "true",
-      auth: { user, pass },
-    });
+  private get client(): Resend | null {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) return null;
+    return new Resend(apiKey);
   }
 
   private get from(): string {
-    return (
-      process.env.EMAIL_FROM ??
-      `${APP_NAME} <${process.env.EMAIL_USER ?? "noreply@swaraj.org.in"}>`
-    );
+    return process.env.EMAIL_FROM ?? `${APP_NAME} <onboarding@resend.dev>`;
   }
 
   async sendOtp(to: string, otp: string): Promise<void> {
-    const transporter = this.createTransporter();
-    if (!transporter) {
+    const resend = this.client;
+    if (!resend) {
       this.logger.warn(`[email] NOT CONFIGURED — OTP for ${to}: ${otp}`);
       return;
     }
@@ -75,16 +65,20 @@ export class EmailService {
 
     try {
       this.logger.log(`[email] sending OTP to ${to}`);
-      await transporter.sendMail({
+      const { error } = await resend.emails.send({
         from: this.from,
         to,
         subject: `${otp} is your Swaraj verification code`,
         html,
         text: `Your Swaraj OTP is: ${otp}\n\nValid for 10 minutes. If you didn't request this, ignore this email.`,
       });
+      if (error) {
+        this.logger.error(`[email] Resend error sending to ${to}: ${JSON.stringify(error)}`);
+        throw new Error(error.message);
+      }
       this.logger.log(`[email] OTP delivered to ${to}`);
     } catch (err) {
-      this.logger.error(`[email] SMTP error sending to ${to}: ${err}`);
+      this.logger.error(`[email] error sending to ${to}: ${err}`);
       throw err;
     }
   }
