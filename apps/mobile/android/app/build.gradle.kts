@@ -12,7 +12,7 @@ if (keyPropertiesFile.exists()) {
 }
 
 android {
-    namespace = "app.swaraj.mobile"
+    namespace = "com.swaraj.student"
     compileSdk = flutter.compileSdkVersion
 
     compileOptions {
@@ -32,7 +32,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "app.swaraj.mobile"
+        applicationId = "com.swaraj.student"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
