@@ -13,7 +13,6 @@ const googleId = process.env.GOOGLE_CLIENT_ID || undefined;
 const googleSecret = process.env.GOOGLE_CLIENT_SECRET || undefined;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.AUTH_SECRET,
   providers: [
     ...(googleId && googleSecret
       ? [Google({ clientId: googleId, clientSecret: googleSecret })]
