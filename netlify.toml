@@ -6,6 +6,7 @@
 [build.environment]
   NODE_VERSION = "22"
   PNPM_VERSION = "11.1.3"
+  SECRETS_SCAN_OMIT_PATHS = "apps/mobile"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
