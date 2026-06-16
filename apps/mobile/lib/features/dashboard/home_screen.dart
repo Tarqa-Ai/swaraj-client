@@ -180,10 +180,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: GestureDetector(
-          onLongPress: () => Navigator.pushNamed(context, '/admin')
-              .then((_) => _fetchAll()),
-          child: Row(
+        title: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(4),
@@ -202,7 +199,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ],
           ),
-        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 20),
@@ -226,64 +222,106 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // IQ Ring + stats
+              // Greeting banner
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 32),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                decoration: BoxDecoration(
+                  color: SwarajColors.navy,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(24),
+                    bottomRight: Radius.circular(24),
+                  ),
+                ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IQRing(score: _politicalIQ),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Text(
-                        _streak > 0
-                            ? '🔥 $_streak day streak · Keep it up!'
-                            : 'Start your civic learning journey today.',
-                        textAlign: TextAlign.center,
-                        style: SwarajTypography.body(fontSize: 14),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      constraints: const BoxConstraints(maxWidth: 320),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: SwarajColors.saffron.withValues(alpha: 0.08),
-                        border: Border.all(
-                          color: SwarajColors.saffron.withValues(alpha: 0.4),
-                          width: 1.0,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _name.isNotEmpty
+                                    ? 'Hello, ${_name.split(' ').first}'
+                                    : 'Hello there',
+                                style: SwarajTypography.headline(
+                                    fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _streak > 0
+                                    ? '🔥 $_streak-day streak — keep it going!'
+                                    : 'Start your civic learning journey.',
+                                style: SwarajTypography.body(
+                                    fontSize: 13, color: Colors.white.withValues(alpha: 0.6)),
+                              ),
+                            ],
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(8),
+                        if (_streak > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: SwarajColors.saffron.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: SwarajColors.saffron.withValues(alpha: 0.3)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text('🔥', style: const TextStyle(fontSize: 20)),
+                                Text(
+                                  '$_streak',
+                                  style: SwarajTypography.headline(
+                                      fontSize: 16, fontWeight: FontWeight.w800,
+                                      color: SwarajColors.saffron),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                       ),
                       child: Text.rich(
                         TextSpan(
                           children: [
-                            const TextSpan(
-                              text: '🇮🇳 ',
-                              style: TextStyle(fontSize: 14),
+                            const TextSpan(text: '🇮🇳  '),
+                            TextSpan(
+                              text: 'MY Bharat: ',
+                              style: SwarajTypography.mono(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: SwarajColors.saffron),
                             ),
                             TextSpan(
-                              text: 'MY Bharat Initiative: ',
+                              text: "Mobilising 50 lakh+ young citizens. You're one of them.",
                               style: SwarajTypography.body(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: SwarajColors.navy,
-                              ),
-                            ),
-                            TextSpan(
-                              text:
-                                  "India is mobilising 50 lakh+ young citizens through MY Bharat. You're one of them.",
-                              style: SwarajTypography.body(
-                                fontSize: 12,
-                                color: SwarajColors.navy,
-                              ),
+                                  fontSize: 12, color: Colors.white.withValues(alpha: 0.7)),
                             ),
                           ],
                         ),
                       ),
                     ),
+                  ],
+                ),
+              ),
+
+              // IQ Ring + stats
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 28),
+                child: Column(
+                  children: [
+                    IQRing(score: _politicalIQ),
                   ],
                 ),
               ),

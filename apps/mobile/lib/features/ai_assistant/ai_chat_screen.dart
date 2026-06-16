@@ -360,7 +360,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             Row(
               children: [
                 Text(
-                  '$timeStr | SWARAJ AI',
+                  '$timeStr | TARQA AI',
                   style: SwarajTypography.mono(
                       fontSize: 10, color: SwarajColors.slateLight),
                 ),

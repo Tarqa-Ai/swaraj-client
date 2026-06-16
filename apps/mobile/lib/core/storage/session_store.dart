@@ -10,6 +10,8 @@ class SessionStore {
   static const _keyEmail = 'swaraj_email';
   static const _keyLanguage = 'swaraj_language';
   static const _keyDevToken = 'swaraj_dev_token';
+  static const _keyAuthToken = 'swaraj_auth_token';
+
   Future<void> savePhone(String phone) =>
       _storage.write(key: _keyPhone, value: phone);
   Future<String?> getPhone() => _storage.read(key: _keyPhone);
@@ -26,8 +28,15 @@ class SessionStore {
       _storage.write(key: _keyDevToken, value: token);
   Future<String?> getDevToken() => _storage.read(key: _keyDevToken);
 
+  /// Persists the backend-issued auth token (student JWT or dev bypass).
+  Future<void> saveToken(String token) =>
+      _storage.write(key: _keyAuthToken, value: token);
+  Future<String?> getToken() => _storage.read(key: _keyAuthToken);
+
   Future<void> clear() async {
     await _storage.deleteAll();
-    await Supabase.instance.client.auth.signOut();
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } catch (_) {}
   }
 }

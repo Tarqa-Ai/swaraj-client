@@ -154,41 +154,55 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         color: SwarajColors.saffron,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
+              // Profile hero
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                decoration: BoxDecoration(
+                  color: SwarajColors.navy,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(24),
+                    bottomRight: Radius.circular(24),
+                  ),
+                ),
                 child: Column(
                   children: [
-                    const SizedBox(height: 12),
-                    CircleAvatar(
-                      radius: 36,
-                      backgroundColor: SwarajColors.navy,
-                      child: Text(
-                        _avatarInitials,
-                        style: SwarajTypography.headline(
-                            fontSize: 24,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold),
+                    // Avatar with saffron ring
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: SwarajColors.saffron, width: 2.5),
+                      ),
+                      child: CircleAvatar(
+                        radius: 42,
+                        backgroundColor: SwarajColors.saffron.withValues(alpha: 0.15),
+                        child: Text(
+                          _avatarInitials,
+                          style: SwarajTypography.headline(
+                              fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     _name.isEmpty
                         ? Container(
                             width: 140,
-                            height: 24,
+                            height: 22,
                             decoration: BoxDecoration(
-                              color: Colors.black12,
+                              color: Colors.white.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           )
                         : Text(
                             _name,
                             style: SwarajTypography.headline(
-                                fontSize: 24, fontWeight: FontWeight.bold),
+                                fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
                       'Citizen of Viksit Bharat @ 2047',
                       style: SwarajTypography.body(
@@ -198,105 +212,115 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ).copyWith(fontStyle: FontStyle.italic),
                     ),
                     if (_schoolAndGrade.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
                         _schoolAndGrade,
-                        style: SwarajTypography.body(fontSize: 14),
+                        style: SwarajTypography.body(
+                            fontSize: 13, color: Colors.white.withValues(alpha: 0.65)),
                       ),
                     ],
                     if (_memberSince.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'MEMBER SINCE',
-                            style: SwarajTypography.mono(
-                                fontSize: 10,
-                                color: SwarajColors.slateLight),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _memberSince,
-                            style: SwarajTypography.mono(
-                                fontSize: 12,
-                                color: SwarajColors.navy,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ],
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(100),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'MEMBER SINCE  ',
+                              style: SwarajTypography.mono(
+                                  fontSize: 9, color: Colors.white.withValues(alpha: 0.45)),
+                            ),
+                            Text(
+                              _memberSince,
+                              style: SwarajTypography.mono(
+                                  fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(_iq.toString(), 'Political IQ'),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard(widget.points.toString(), 'Total Points'),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard(_streak.toString(), 'Streak Days'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-              Text(
-                'Quick Actions',
-                style: SwarajTypography.headline(
-                    fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: SwarajColors.navy.withValues(alpha: 0.08)),
-                ),
-                child: Column(
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
                   children: [
-                    _buildActionItem(
-                      icon: Icons.psychology,
-                      iconColor: SwarajColors.saffron,
-                      text: 'Ask Swaraj AI',
-                      onTap: () => widget.onTabChange(3),
+                    Expanded(child: _buildStatCard(_iq.toString(), 'IQ', Icons.psychology_outlined, SwarajColors.saffron)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _buildStatCard(widget.points.toString(), 'Points', Icons.star_outline, SwarajColors.navy)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _buildStatCard('$_streak🔥', 'Streak', Icons.local_fire_department_outlined, Colors.orange)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Quick Actions',
+                      style: SwarajTypography.headline(
+                          fontSize: 20, fontWeight: FontWeight.bold),
                     ),
-                    const Divider(height: 1),
-                    _buildActionItem(
-                      icon: Icons.card_membership,
-                      iconColor: SwarajColors.navy,
-                      text: 'View Certificates',
-                      onTap: () =>
-                          Navigator.pushNamed(context, '/certificate'),
-                    ),
-                    const Divider(height: 1),
-                    _buildActionItem(
-                      icon: Icons.forum,
-                      iconColor: SwarajColors.navy,
-                      text: 'Join Debate',
-                      onTap: () => widget.onTabChange(2),
-                    ),
-                    const Divider(height: 1),
-                    _buildActionItem(
-                      icon: Icons.settings,
-                      iconColor: SwarajColors.navy,
-                      text: 'App Settings',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SettingsScreen(
-                              onResetAllData: widget.onResetAllData,
-                            ),
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: SwarajColors.navy.withValues(alpha: 0.08)),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildActionItem(
+                            icon: Icons.psychology,
+                            iconColor: SwarajColors.saffron,
+                            text: 'Ask Swaraj AI',
+                            onTap: () => widget.onTabChange(3),
                           ),
-                        );
-                      },
+                          const Divider(height: 1),
+                          _buildActionItem(
+                            icon: Icons.card_membership,
+                            iconColor: SwarajColors.navy,
+                            text: 'View Certificates',
+                            onTap: () =>
+                                Navigator.pushNamed(context, '/certificate'),
+                          ),
+                          const Divider(height: 1),
+                          _buildActionItem(
+                            icon: Icons.forum,
+                            iconColor: SwarajColors.navy,
+                            text: 'Join Debate',
+                            onTap: () => widget.onTabChange(2),
+                          ),
+                          const Divider(height: 1),
+                          _buildActionItem(
+                            icon: Icons.settings,
+                            iconColor: SwarajColors.navy,
+                            text: 'App Settings',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SettingsScreen(
+                                    onResetAllData: widget.onResetAllData,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -309,26 +333,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildStatCard(String value, String label) {
+  Widget _buildStatCard(String value, String label, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: SwarajColors.navy.withValues(alpha: 0.08)),
       ),
       child: Column(
         children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(height: 6),
           Text(
             value,
             style: SwarajTypography.headline(
-                fontSize: 24, fontWeight: FontWeight.bold),
+                fontSize: 20, fontWeight: FontWeight.bold, color: SwarajColors.navy),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             label,
-            style:
-                SwarajTypography.mono(fontSize: 9, color: SwarajColors.slate),
+            style: SwarajTypography.mono(fontSize: 9, color: SwarajColors.slate),
           ),
         ],
       ),

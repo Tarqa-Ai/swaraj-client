@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/api/api_client.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/typography.dart';
+import '../../core/services/cache_service.dart';
+import '../auth/data/auth_repository.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   final VoidCallback onResetAllData;
 
   const SettingsScreen({super.key, required this.onResetAllData});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isDeleting = false;
 
   void _showMockToast(String message, Color bgColor) {
@@ -25,6 +29,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  Future<void> _logout() async {
+    await ref.read(authRepositoryProvider).logout();
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
 
   void _confirmDeletion() {
@@ -101,6 +111,267 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Navigate back to the login screen and clear history stack
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     });
+  }
+
+  void _showProfileAndSecurity() {
+    final profile = SwarajCacheService.getUserProfile();
+    final nameCtrl =
+        TextEditingController(text: profile?['name'] as String? ?? '');
+    final gradeCtrl = TextEditingController(
+        text: profile?['grade'] != null ? profile!['grade'].toString() : '');
+    final schoolName =
+        (profile?['school'] as Map<String, dynamic>?)?['name'] as String? ?? '';
+    final email = profile?['email'] as String? ?? '';
+    final phone = profile?['phone'] as String? ?? '';
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (_, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 36,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: SwarajColors.navy.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'PROFILE & SECURITY',
+                            style: SwarajTypography.mono(
+                                fontSize: 10, color: SwarajColors.saffron),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: const Icon(Icons.close,
+                                size: 20, color: SwarajColors.slateLight),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Edit Profile',
+                        style: SwarajTypography.headline(
+                            fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 20),
+                      Text('DISPLAY NAME',
+                          style: SwarajTypography.mono(
+                              fontSize: 10, color: SwarajColors.slateLight)),
+                      const SizedBox(height: 6),
+                      _buildEditField(
+                          controller: nameCtrl, hint: 'Your full name'),
+                      const SizedBox(height: 16),
+                      Text('GRADE / CLASS',
+                          style: SwarajTypography.mono(
+                              fontSize: 10, color: SwarajColors.slateLight)),
+                      const SizedBox(height: 6),
+                      _buildEditField(
+                          controller: gradeCtrl,
+                          hint: 'e.g. 10',
+                          keyboardType: TextInputType.number),
+                      if (schoolName.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Text('SCHOOL',
+                            style: SwarajTypography.mono(
+                                fontSize: 10, color: SwarajColors.slateLight)),
+                        const SizedBox(height: 6),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 13),
+                          decoration: BoxDecoration(
+                            color: SwarajColors.navy.withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color:
+                                    SwarajColors.navy.withValues(alpha: 0.1)),
+                          ),
+                          child: Text(schoolName,
+                              style: SwarajTypography.body(
+                                  fontSize: 14,
+                                  color: SwarajColors.slateLight)),
+                        ),
+                      ],
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: isSaving
+                              ? null
+                              : () async {
+                                  setSheetState(() => isSaving = true);
+                                  try {
+                                    final body = <String, dynamic>{
+                                      'name': nameCtrl.text.trim(),
+                                    };
+                                    final grade = int.tryParse(
+                                        gradeCtrl.text.trim());
+                                    if (grade != null) body['grade'] = grade;
+                                    await ref
+                                        .read(apiClientProvider)
+                                        .patch('/me/profile', body);
+                                    final updated = await ref
+                                        .read(apiClientProvider)
+                                        .get('/me') as Map<String, dynamic>;
+                                    await SwarajCacheService.saveUserProfile(
+                                        updated);
+                                    if (!mounted) return;
+                                    Navigator.pop(ctx);
+                                    _showMockToast('Profile updated successfully.',
+                                        SwarajColors.success);
+                                  } catch (_) {
+                                    setSheetState(() => isSaving = false);
+                                    _showMockToast(
+                                        'Failed to update. Try again.',
+                                        SwarajColors.error);
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: SwarajColors.navy,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                            elevation: 0,
+                          ),
+                          child: isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ))
+                              : Text('SAVE CHANGES',
+                                  style: SwarajTypography.mono(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white)),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Row(children: [
+                        Expanded(
+                            child: Divider(
+                                color: SwarajColors.navy
+                                    .withValues(alpha: 0.08))),
+                        Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text('SECURITY',
+                              style: SwarajTypography.mono(
+                                  fontSize: 10,
+                                  color: SwarajColors.slateLight)),
+                        ),
+                        Expanded(
+                            child: Divider(
+                                color: SwarajColors.navy
+                                    .withValues(alpha: 0.08))),
+                      ]),
+                      const SizedBox(height: 16),
+                      if (email.isNotEmpty)
+                        _buildInfoRow(
+                            Icons.email_outlined, 'Email on file', email),
+                      if (phone.isNotEmpty)
+                        _buildInfoRow(
+                            Icons.phone_outlined, 'Phone on file', phone),
+                      _buildInfoRow(Icons.timer_outlined, 'Session',
+                          'Active · 90-day token'),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildEditField({
+    required TextEditingController controller,
+    required String hint,
+    TextInputType? keyboardType,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: SwarajTypography.body(fontSize: 14, color: SwarajColors.navy),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle:
+            SwarajTypography.body(fontSize: 14, color: SwarajColors.outline),
+        filled: true,
+        fillColor: SwarajColors.navy.withValues(alpha: 0.03),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+                color: SwarajColors.navy.withValues(alpha: 0.1))),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+                color: SwarajColors.navy.withValues(alpha: 0.1))),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: SwarajColors.saffron)),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: SwarajColors.slateLight),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: SwarajTypography.mono(
+                      fontSize: 10, color: SwarajColors.slateLight)),
+              const SizedBox(height: 2),
+              Text(value,
+                  style: SwarajTypography.body(
+                      fontSize: 14,
+                      color: SwarajColors.navy,
+                      fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   void _showPrivacyPolicy() {
@@ -530,9 +801,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _buildSettingsItem(
                         icon: Icons.lock_outline,
                         title: 'Profile & Security',
-                        onTap: () => _showMockToast(
-                            'Profile security is fully managed via custom OTP.',
-                            SwarajColors.navy),
+                        onTap: _showProfileAndSecurity,
                       ),
                       const Divider(height: 1),
                       _buildSettingsItem(
@@ -553,6 +822,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onTap: _showContactSupport,
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout, size: 18, color: SwarajColors.navy),
+                    label: Text(
+                      'SIGN OUT',
+                      style: SwarajTypography.mono(
+                          fontSize: 12, fontWeight: FontWeight.bold, color: SwarajColors.navy),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: SwarajColors.navy),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 32),

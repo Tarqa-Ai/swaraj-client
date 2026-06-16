@@ -5,9 +5,8 @@ import type { Request } from "express";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { AuthenticatedUser } from "../decorators/current-user.decorator";
 
-const supabaseJwks = createRemoteJWKSet(
-  new URL(`${process.env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`)
-);
+// Lazy — created on first use so env vars are loaded by then.
+let _supabaseJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -41,8 +40,14 @@ export class JwtAuthGuard implements CanActivate {
 
     // Path 1: Supabase JWT (student auth) — ES256 via JWKS
     if (process.env.SUPABASE_URL) {
+      if (!_supabaseJwks) {
+        _supabaseJwks = createRemoteJWKSet(
+          new URL(`${process.env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`)
+        );
+      }
+      const jwks = _supabaseJwks;
       try {
-        const { payload } = await jwtVerify(token, supabaseJwks, { audience: "authenticated" });
+        const { payload } = await jwtVerify(token, jwks, { audience: "authenticated" });
         const supabaseId = payload["sub"] as string;
         const phone = payload["phone"] as string | undefined;
         const email = payload["email"] as string | undefined;
@@ -66,7 +71,7 @@ export class JwtAuthGuard implements CanActivate {
       }
     }
 
-    // Path 2: Admin JWT (email+password login)
+    // Path 2: Custom JWT — admin (email+password) or student (OTP via backend)
     try {
       const payload = await this.jwtService.verifyAsync<AuthenticatedUser>(token, {
         secret: process.env.JWT_ACCESS_SECRET
@@ -78,6 +83,15 @@ export class JwtAuthGuard implements CanActivate {
         });
         if (!admin || admin.deletedAt) throw new UnauthorizedException("Invalid or expired session");
         request.user = payload;
+        return true;
+      }
+      if (payload.role === "STUDENT") {
+        const user = await this.prisma.user.findUnique({
+          where: { id: payload.id },
+          select: { id: true, phone: true, deletedAt: true }
+        });
+        if (!user || user.deletedAt) throw new UnauthorizedException("Account not found or suspended");
+        request.user = { id: user.id, phone: user.phone ?? undefined, role: "STUDENT" };
         return true;
       }
     } catch {

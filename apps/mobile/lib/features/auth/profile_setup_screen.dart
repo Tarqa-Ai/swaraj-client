@@ -30,6 +30,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   List<Map<String, dynamic>> _schools = [];
   String? _selectedSchoolId;
   String _schoolSearchQuery = '';
+  bool _showAddSchool = false;
+  bool _isAddingSchool = false;
+  String? _addedSchoolName;
+  final TextEditingController _customNameCtrl = TextEditingController();
+  final TextEditingController _customDistrictCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -41,6 +46,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   void dispose() {
     _nameController.dispose();
     _dobController.dispose();
+    _customNameCtrl.dispose();
+    _customDistrictCtrl.dispose();
     super.dispose();
   }
 
@@ -158,6 +165,37 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         _dobController.text =
             "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
       });
+    }
+  }
+
+  Future<void> _addCustomSchool() async {
+    final name = _customNameCtrl.text.trim();
+    final district = _customDistrictCtrl.text.trim();
+    if (name.length < 3) {
+      setState(() => _error = 'Please enter a valid institution name (at least 3 characters).');
+      return;
+    }
+    if (district.length < 2) {
+      setState(() => _error = 'Please enter the district name.');
+      return;
+    }
+    setState(() { _isAddingSchool = true; _error = null; });
+    try {
+      final result = await ref.read(apiClientProvider).post('/schools', {
+        'name': name,
+        'district': district,
+      }) as Map<String, dynamic>;
+      if (!mounted) return;
+      setState(() {
+        _selectedSchoolId = result['id'] as String;
+        _addedSchoolName = result['name'] as String? ?? name;
+        _showAddSchool = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = 'Failed to add institution. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isAddingSchool = false);
     }
   }
 
@@ -529,6 +567,131 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                     },
                   ),
                 ),
+              const SizedBox(height: 16),
+              if (_addedSchoolName != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: SwarajColors.success.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: SwarajColors.success.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, size: 16, color: SwarajColors.success),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${_addedSchoolName!} — added and selected',
+                          style: SwarajTypography.body(fontSize: 13, color: SwarajColors.success),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showAddSchool = !_showAddSchool;
+                    if (_showAddSchool && _customNameCtrl.text.isEmpty && _schoolSearchQuery.isNotEmpty) {
+                      _customNameCtrl.text = _schoolSearchQuery;
+                    }
+                  });
+                },
+                child: Row(
+                  children: [
+                    Icon(
+                      _showAddSchool ? Icons.expand_less : Icons.add_circle_outline,
+                      size: 16,
+                      color: SwarajColors.saffron,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _showAddSchool ? 'Cancel' : "Can't find your institution? Add it",
+                      style: SwarajTypography.body(
+                        fontSize: 13,
+                        color: SwarajColors.saffron,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_showAddSchool) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: SwarajColors.navy.withValues(alpha: 0.1)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('INSTITUTION NAME', style: SwarajTypography.mono(fontSize: 11)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _customNameCtrl,
+                        style: SwarajTypography.body(fontSize: 15, color: SwarajColors.navy),
+                        decoration: InputDecoration(
+                          hintText: 'e.g. Delhi Public School, Jaipur',
+                          hintStyle: SwarajTypography.body(color: SwarajColors.outline),
+                          filled: true,
+                          fillColor: SwarajColors.navy.withValues(alpha: 0.03),
+                          contentPadding: const EdgeInsets.all(12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: SwarajColors.navy.withValues(alpha: 0.1)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text('DISTRICT', style: SwarajTypography.mono(fontSize: 11)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _customDistrictCtrl,
+                        style: SwarajTypography.body(fontSize: 15, color: SwarajColors.navy),
+                        decoration: InputDecoration(
+                          hintText: 'e.g. Jaipur',
+                          hintStyle: SwarajTypography.body(color: SwarajColors.outline),
+                          filled: true,
+                          fillColor: SwarajColors.navy.withValues(alpha: 0.03),
+                          contentPadding: const EdgeInsets.all(12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: SwarajColors.navy.withValues(alpha: 0.1)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _isAddingSchool ? null : _addCustomSchool,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: SwarajColors.saffron,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            elevation: 0,
+                          ),
+                          child: _isAddingSchool
+                              ? const SizedBox(
+                                  width: 18, height: 18,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : Text(
+                                  'ADD INSTITUTION',
+                                  style: SwarajTypography.mono(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ],
         );

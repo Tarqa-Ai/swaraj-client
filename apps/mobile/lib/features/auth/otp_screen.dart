@@ -68,8 +68,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       _isButtonEnabled = allFilled;
       _error = null;
     });
+    if (allFilled && !_isLoading) {
+      _submitOTP();
+    }
   }
-// Nice
+
   Future<void> _resendOTP() async {
     setState(() => _error = null);
     try {
@@ -83,6 +86,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               style: SwarajTypography.mono(color: Colors.white, fontSize: 13)),
           backgroundColor: SwarajColors.navy,
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     } catch (e) {
@@ -130,38 +134,56 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       backgroundColor: SwarajColors.cream,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              IconButton(
-                onPressed: _isLoading ? null : () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back, color: SwarajColors.navy),
-                style: IconButton.styleFrom(padding: EdgeInsets.zero, alignment: Alignment.centerLeft),
-              ),
-              const SizedBox(height: 24),
-              Text('Verify OTP', style: SwarajTypography.headline(fontSize: 32)),
-              const SizedBox(height: 8),
-              RichText(
-                text: TextSpan(
-                  text: "We've sent a 6-digit code to ",
-                  style: SwarajTypography.body(),
-                  children: [
-                    TextSpan(
-                      text: widget.email,
-                      style: SwarajTypography.body(
-                          fontWeight: FontWeight.bold, color: SwarajColors.navy),
-                    ),
-                  ],
+              // Back button
+              GestureDetector(
+                onTap: _isLoading ? null : () => Navigator.pop(context),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: SwarajColors.navy.withValues(alpha: 0.1)),
+                  ),
+                  child: const Icon(Icons.arrow_back_rounded, size: 20, color: SwarajColors.navy),
                 ),
               ),
+
               const SizedBox(height: 36),
+
+              // Heading
+              Text(
+                'Verify Code',
+                style: SwarajTypography.headline(
+                    fontSize: 38, fontWeight: FontWeight.w800, color: SwarajColors.navy),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'We sent a 6-digit code to',
+                style: SwarajTypography.body(fontSize: 15, color: SwarajColors.slate),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.email,
+                style: SwarajTypography.body(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: SwarajColors.saffron),
+              ),
+
+              const SizedBox(height: 40),
+
+              // OTP boxes
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: List.generate(_otpLength, (index) {
                   return SizedBox(
-                    width: 44,
-                    height: 56,
+                    width: 48,
+                    height: 60,
                     child: TextField(
                       controller: _controllers[index],
                       focusNode: _focusNodes[index],
@@ -169,24 +191,22 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                       textAlign: TextAlign.center,
                       maxLength: 1,
                       enabled: !_isLoading,
-                      style: SwarajTypography.headline(fontSize: 24, fontWeight: FontWeight.w800),
+                      style: SwarajTypography.headline(
+                          fontSize: 26, fontWeight: FontWeight.w800, color: SwarajColors.navy),
                       decoration: InputDecoration(
                         counterText: '',
                         filled: true,
-                        fillColor: SwarajColors.navy.withValues(alpha: 0.03),
+                        fillColor: Colors.white,
                         contentPadding: EdgeInsets.zero,
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide(
-                              color: SwarajColors.navy.withValues(alpha: 0.1), width: 1.5),
+                              color: SwarajColors.navy.withValues(alpha: 0.12), width: 1.5),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: SwarajColors.saffron, width: 2),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide:
+                              const BorderSide(color: SwarajColors.saffron, width: 2.5),
                         ),
                       ),
                       onChanged: (value) {
@@ -201,18 +221,50 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   );
                 }),
               ),
+
+              const SizedBox(height: 24),
+
+              if (_isLoading)
+                const Center(
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                        color: SwarajColors.saffron, strokeWidth: 2.5),
+                  ),
+                ),
+
               if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!,
-                    style: SwarajTypography.body(fontSize: 13, color: Colors.red.shade700)),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: SwarajColors.errorBg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, size: 16, color: SwarajColors.error),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(_error!,
+                            style: SwarajTypography.body(
+                                fontSize: 13, color: SwarajColors.error)),
+                      ),
+                    ],
+                  ),
+                ),
               ],
+
               const SizedBox(height: 32),
+
+              // Resend
               Center(
                 child: _secondsRemaining > 0
                     ? RichText(
                         text: TextSpan(
                           text: 'Resend code in ',
-                          style: SwarajTypography.body(fontSize: 14),
+                          style: SwarajTypography.body(fontSize: 14, color: SwarajColors.slate),
                           children: [
                             TextSpan(
                               text: '${_secondsRemaining}s',
@@ -224,46 +276,45 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                           ],
                         ),
                       )
-                    : TextButton(
-                        onPressed: _isLoading ? null : _resendOTP,
-                        child: Text('Resend Code',
-                            style: SwarajTypography.mono(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: SwarajColors.saffron)),
+                    : GestureDetector(
+                        onTap: _isLoading ? null : _resendOTP,
+                        child: Text(
+                          'Resend Code',
+                          style: SwarajTypography.mono(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: SwarajColors.saffron),
+                        ),
                       ),
               ),
-              const SizedBox(height: 24),
+
+              const SizedBox(height: 32),
+
+              // Verify button
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: _isButtonEnabled && !_isLoading ? _submitOTP : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: SwarajColors.navy,
+                    backgroundColor: SwarajColors.saffron,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor: SwarajColors.navy.withValues(alpha: 0.4),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    disabledBackgroundColor: SwarajColors.saffron.withValues(alpha: 0.3),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     elevation: 0,
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('VERIFY & CONTINUE',
-                                style: SwarajTypography.mono(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white)),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.arrow_forward, size: 16),
-                          ],
-                        ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('VERIFY & CONTINUE',
+                          style: SwarajTypography.mono(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white)),
+                      const SizedBox(width: 10),
+                      const Icon(Icons.arrow_forward_rounded, size: 20),
+                    ],
+                  ),
                 ),
               ),
             ],

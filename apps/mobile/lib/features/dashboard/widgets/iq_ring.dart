@@ -174,11 +174,14 @@ class _RollingDigitState extends State<RollingDigit> with SingleTickerProviderSt
         child: AnimatedBuilder(
           animation: _animation,
           builder: (context, child) {
-            final val = _animation.value;
+            final val = _animation.value.clamp(0.0, 9.0);
             return Stack(
+              clipBehavior: Clip.none,
               children: [
-                Transform.translate(
-                  offset: Offset(0, -val * digitHeight),
+                Positioned(
+                  top: -val * digitHeight,
+                  left: 0,
+                  right: 0,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: List.generate(10, (index) {
@@ -187,9 +190,7 @@ class _RollingDigitState extends State<RollingDigit> with SingleTickerProviderSt
                         child: Center(
                           child: Text(
                             index.toString(),
-                            style: widget.style.copyWith(
-                              height: 1.0,
-                            ),
+                            style: widget.style.copyWith(height: 1.0),
                           ),
                         ),
                       );

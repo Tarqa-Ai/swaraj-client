@@ -2,8 +2,14 @@ import { BadRequestException, Injectable, ServiceUnavailableException } from "@n
 import axios from "axios";
 import type { ExplainBody } from "./ai.schemas";
 
-const TARQA_URL = "https://api.tarqaai.com/api/v1/ask";
 const TARQA_MODEL = "deepseek.v3.2";
+
+function getTarqaUrl(): string {
+  if (process.env.TARQA_BASE_URL) return `${process.env.TARQA_BASE_URL}/api/v1/ask`;
+  const isProd = process.env.NODE_ENV === "production";
+  const base = isProd ? "https://api.tarqaai.com" : "https://api-dev.tarqaai.com";
+  return `${base}/api/v1/ask`;
+}
 
 @Injectable()
 export class AiService {
@@ -18,10 +24,11 @@ export class AiService {
       `You explain Indian civics to Grade 9-12 students. Explain to a 15-year-old in simple language under 100 words. Do not be partisan. Do not act as a chatbot.\n\n` +
       `${languageInstruction}\n\nConcept: ${body.question}`;
 
+    const tarqaUrl = getTarqaUrl();
     let responseText: string;
     try {
       const { data } = await axios.post(
-        `${TARQA_URL}?model=${TARQA_MODEL}`,
+        `${tarqaUrl}?model=${TARQA_MODEL}`,
         { message },
         {
           headers: {

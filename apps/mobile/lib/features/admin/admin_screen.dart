@@ -1,9 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/config/config.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/typography.dart';
+
+// Web Client ID from Google Console — must match GOOGLE_CLIENT_ID in backend .env
+const _googleWebClientId =
+    '213528243845-kmg8av6caecqlbngmr0gpn2o25aq8rd3.apps.googleusercontent.com';
 
 class AdminScreen extends StatefulWidget {
   final VoidCallback onDataChanged;
@@ -19,41 +24,33 @@ class _AdminScreenState extends State<AdminScreen>
   late TabController _tabController;
   final String _baseUrl = SwarajConfig.apiBaseUrl;
 
-  List<dynamic> _users = [];
-  List<dynamic> _lessons = [];
-  Map<String, dynamic> _debates = {
-    'motion': '',
-    'votesFavor': 0,
-    'votesAgainst': 0,
-    'arguments': []
-  };
+  // Admin JWT — obtained via /auth/admin/login
+  String? _adminToken;
+
+  List<dynamic> _students = [];
+  List<dynamic> _modules = [];
+  List<dynamic> _debates = [];
 
   int _totalUsers = 0;
-  int _totalPoints = 0;
-  double _avgIQ = 72.0;
+  int _activeUsers = 0;
+  double _avgIQ = 0.0;
+  int _totalModules = 0;
 
   bool _isLoading = false;
 
-  // Lesson Form Controllers
-  final _lessonFormKey = GlobalKey<FormState>();
-  final _categoryController = TextEditingController();
-  final _titleController = TextEditingController();
-  final _descController = TextEditingController();
-  final _totalController = TextEditingController(text: '10');
-  final _completedController = TextEditingController(text: '0');
-
-  // Motion Form Controller
-  final _motionController = TextEditingController();
+  // Debate Form Controller
+  final _debateTopicController = TextEditingController();
 
   final List<String> _systemLogs = [
-    "[SYSTEM DETECTED: macOS Arm64]",
-    "[OK] Node server listening on http://localhost:3000",
-    "[OK] database.json read-back check successful",
-    "[OK] iOS privacy manifest verified inside Runner/PrivacyInfo.xcprivacy",
-    "[OK] Android compiling target successfully elevated to API level 35",
-    "[NOTICE] Apple Guideline 4.8 Exemption confirmed - Zero social SSO",
-    "[NOTICE] Account Erasure compliance tests verified (Guideline 5.1.1)"
+    "[SYSTEM] Swaraj Admin Panel v2.0",
+    "[OK] Connected to backend: ${SwarajConfig.apiBaseUrl}",
+    "[NOTICE] Admin JWT required — use login to authenticate",
   ];
+
+  Map<String, String> get _authHeaders => {
+        'Content-Type': 'application/json',
+        if (_adminToken != null) 'Authorization': 'Bearer $_adminToken',
+      };
 
   @override
   void initState() {
@@ -63,18 +60,13 @@ class _AdminScreenState extends State<AdminScreen>
       if (_tabController.indexIsChanging) return;
       _fetchDataForActiveTab();
     });
-    _fetchDashboardMetrics();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loginWithGoogle());
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _categoryController.dispose();
-    _titleController.dispose();
-    _descController.dispose();
-    _totalController.dispose();
-    _completedController.dispose();
-    _motionController.dispose();
+    _debateTopicController.dispose();
     super.dispose();
   }
 
@@ -96,24 +88,62 @@ class _AdminScreenState extends State<AdminScreen>
     );
   }
 
-  Future<void> _fetchDashboardMetrics() async {
-    setState(() => _isLoading = true);
+  Future<void> _loginWithGoogle() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/users'));
-      if (response.statusCode == 200) {
-        final List<dynamic> users = json.decode(response.body);
-        setState(() {
-          _users = users;
-          _totalUsers = users.length;
-          _totalPoints = users.fold(0, (sum, u) => sum + (u['points'] as int));
-          final double totalIQ = users.fold(
-              0.0, (sum, u) => sum + (u['politicalIQ'] as num).toDouble());
-          _avgIQ = totalIQ / (_totalUsers == 0 ? 1 : _totalUsers);
-        });
-        _addLog("[LOAD] Loaded dashboard analytics metrics successfully");
+      final googleSignIn = GoogleSignIn(serverClientId: _googleWebClientId);
+      final account = await googleSignIn.signIn();
+      if (account == null) {
+        _addLog("[NOTICE] Google Sign-In cancelled");
+        return;
+      }
+      final auth = await account.authentication;
+      final idToken = auth.idToken;
+      if (idToken == null) {
+        _addLog("[ERROR] No ID token received from Google");
+        _showToast('Google Sign-In failed — no ID token');
+        return;
+      }
+      _addLog("[AUTH] Google token received, verifying with backend...");
+      final res = await http.post(
+        Uri.parse('$_baseUrl/auth/admin/google'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'idToken': idToken}),
+      );
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final body = json.decode(res.body) as Map<String, dynamic>;
+        setState(() => _adminToken = body['accessToken'] as String?);
+        _addLog("[AUTH] Admin authenticated via Google");
+        _fetchDashboardMetrics();
+      } else {
+        _addLog("[ERROR] Auth failed: ${res.statusCode} ${res.body}");
+        _showToast('Access denied — only the designated admin account is allowed');
       }
     } catch (e) {
-      _addLog("[ERROR] Failed to fetch user metrics from API: $e");
+      _addLog("[ERROR] Google Sign-In error: $e");
+      _showToast('Sign-In error: $e');
+    }
+  }
+
+  Future<void> _fetchDashboardMetrics() async {
+    if (_adminToken == null) return;
+    setState(() => _isLoading = true);
+    try {
+      final res = await http.get(
+        Uri.parse('$_baseUrl/admin/analytics'),
+        headers: _authHeaders,
+      );
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body) as Map<String, dynamic>;
+        setState(() {
+          _totalUsers = (data['totalUsers'] as num?)?.toInt() ?? 0;
+          _activeUsers = (data['activeUsers'] as num?)?.toInt() ?? 0;
+          _avgIQ = (data['avgPoliticalIq'] as num?)?.toDouble() ?? 0.0;
+          _totalModules = (data['totalModules'] as num?)?.toInt() ?? 0;
+        });
+        _addLog("[LOAD] Analytics loaded");
+      }
+    } catch (e) {
+      _addLog("[ERROR] Analytics fetch failed: $e");
     } finally {
       setState(() => _isLoading = false);
     }
@@ -122,228 +152,138 @@ class _AdminScreenState extends State<AdminScreen>
   Future<void> _fetchDataForActiveTab() async {
     final index = _tabController.index;
     if (index == 0) _fetchDashboardMetrics();
-    if (index == 1) _fetchUsers();
-    if (index == 2) _fetchLessons();
+    if (index == 1) _fetchStudents();
+    if (index == 2) _fetchModules();
     if (index == 3) _fetchDebates();
   }
 
-  Future<void> _fetchUsers() async {
+  Future<void> _fetchStudents() async {
+    if (_adminToken == null) return;
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/users'));
-      if (response.statusCode == 200) {
-        setState(() {
-          _users = json.decode(response.body);
-        });
+      final res = await http.get(
+        Uri.parse('$_baseUrl/admin/students?limit=50'),
+        headers: _authHeaders,
+      );
+      if (res.statusCode == 200) {
+        final body = json.decode(res.body) as Map<String, dynamic>;
+        setState(() => _students = (body['data'] as List<dynamic>?) ?? []);
+        _addLog("[LOAD] Loaded ${_students.length} students");
       }
     } catch (e) {
-      _addLog("[ERROR] Failed to fetch users: $e");
+      _addLog("[ERROR] Students fetch failed: $e");
     }
   }
 
-  Future<void> _fetchLessons() async {
+  Future<void> _fetchModules() async {
+    if (_adminToken == null) return;
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/lessons'));
-      if (response.statusCode == 200) {
-        setState(() {
-          _lessons = json.decode(response.body);
-        });
+      final res = await http.get(
+        Uri.parse('$_baseUrl/admin/modules'),
+        headers: _authHeaders,
+      );
+      if (res.statusCode == 200) {
+        setState(() => _modules = json.decode(res.body) as List<dynamic>);
+        _addLog("[LOAD] Loaded ${_modules.length} modules");
       }
     } catch (e) {
-      _addLog("[ERROR] Failed to fetch lessons: $e");
+      _addLog("[ERROR] Modules fetch failed: $e");
     }
   }
 
   Future<void> _fetchDebates() async {
+    if (_adminToken == null) return;
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/debates'));
-      if (response.statusCode == 200) {
-        setState(() {
-          _debates = json.decode(response.body);
-        });
-      }
-    } catch (e) {
-      _addLog("[ERROR] Failed to fetch debates: $e");
-    }
-  }
-
-  Future<void> _adjustPoints(String phone) async {
-    final textController = TextEditingController();
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Adjust Points',
-            style: SwarajTypography.headline(fontSize: 18)),
-        content: TextField(
-          controller: textController,
-          keyboardType: const TextInputType.numberWithOptions(signed: true),
-          decoration: const InputDecoration(
-            hintText: 'Enter amount (e.g. 100 or -50)',
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('CANCEL')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, textController.text),
-            style: ElevatedButton.styleFrom(backgroundColor: SwarajColors.navy),
-            child: const Text('UPDATE'),
-          ),
-        ],
-      ),
-    );
-
-    if (result != null && result.isNotEmpty) {
-      final amount = int.tryParse(result);
-      if (amount == null) return;
-
-      try {
-        final response = await http.put(
-          Uri.parse('$_baseUrl/users/$phone/points'),
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({'amount': amount}),
-        );
-        if (response.statusCode == 200) {
-          _showToast('User points adjusted successfully');
-          _addLog("[EDIT] User points updated for phone $phone by $amount");
-          _fetchUsers();
-          widget.onDataChanged();
-        }
-      } catch (e) {
-        _showToast('Failed to update points');
-      }
-    }
-  }
-
-  Future<void> _promoteRole(String phone, String currentRole) async {
-    final String nextRole = currentRole == 'Citizen'
-        ? 'Moderator'
-        : (currentRole == 'Moderator' ? 'Admin' : 'Citizen');
-    try {
-      final response = await http.put(
-        Uri.parse('$_baseUrl/users/$phone/role'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'role': nextRole}),
+      final res = await http.get(
+        Uri.parse('$_baseUrl/admin/debates'),
+        headers: _authHeaders,
       );
-      if (response.statusCode == 200) {
-        _showToast('Role promoted to $nextRole');
-        _addLog("[ROLE] User $phone promoted to $nextRole");
-        _fetchUsers();
-        widget.onDataChanged();
+      if (res.statusCode == 200) {
+        setState(() => _debates = json.decode(res.body) as List<dynamic>);
+        _addLog("[LOAD] Loaded ${_debates.length} debates");
       }
     } catch (e) {
-      _showToast('Failed to update user role');
+      _addLog("[ERROR] Debates fetch failed: $e");
     }
   }
 
-  Future<void> _suspendUser(String phone) async {
+  Future<void> _suspendStudent(String id, String name) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Confirm Suspension'),
-        content: const Text(
-            'Are you sure you want to suspend this user and permanently delete all their account data? This cannot be undone.'),
+        content: Text('Suspend $name? Their account will be disabled.'),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('CANCEL')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('CANCEL')),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style:
-                ElevatedButton.styleFrom(backgroundColor: SwarajColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: SwarajColors.error),
             child: const Text('SUSPEND'),
           ),
         ],
       ),
     );
-
-    if (confirm == true) {
-      try {
-        final response = await http.delete(Uri.parse('$_baseUrl/users/$phone'));
-        if (response.statusCode == 200) {
-          _showToast('User suspended successfully');
-          _addLog("[SUSPEND] Purged user data details for phone $phone");
-          _fetchUsers();
-          widget.onDataChanged();
-        }
-      } catch (e) {
-        _showToast('Failed to suspend user');
-      }
-    }
-  }
-
-  Future<void> _submitNewLesson() async {
-    if (_lessonFormKey.currentState!.validate()) {
-      final category = _categoryController.text.trim();
-      final title = _titleController.text.trim();
-      final desc = _descController.text.trim();
-      final total = int.tryParse(_totalController.text) ?? 10;
-      final completed = int.tryParse(_completedController.text) ?? 0;
-
-      try {
-        final response = await http.post(
-          Uri.parse('$_baseUrl/lessons'),
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({
-            'category': category,
-            'title': title,
-            'desc': desc,
-            'totalLessons': total,
-            'completedCount': completed,
-          }),
-        );
-        if (response.statusCode == 200) {
-          _showToast('New module published successfully!');
-          _addLog("[CURRICULUM] Published new module: $title");
-          _categoryController.clear();
-          _titleController.clear();
-          _descController.clear();
-          widget.onDataChanged();
-          _tabController.animateTo(0); // bounce back to dashboard
-        }
-      } catch (e) {
-        _showToast('Failed to publish lesson');
-      }
-    }
-  }
-
-  Future<void> _updateWeeklyMotion() async {
-    final motionText = _motionController.text.trim();
-    if (motionText.isEmpty) return;
-
+    if (confirm != true) return;
     try {
-      final response = await http.put(
-        Uri.parse('$_baseUrl/debates/motion'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'motion': motionText}),
+      final res = await http.delete(
+        Uri.parse('$_baseUrl/admin/students/$id'),
+        headers: _authHeaders,
       );
-      if (response.statusCode == 200) {
-        _showToast('Weekly motion updated successfully!');
-        _addLog("[DEBATE] Updated motion: \"$motionText\"");
-        _motionController.clear();
-        _fetchDebates();
-        widget.onDataChanged();
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        _showToast('Student suspended');
+        _addLog("[SUSPEND] Suspended student $name ($id)");
+        _fetchStudents();
+      } else {
+        _showToast('Failed: ${res.statusCode}');
       }
     } catch (e) {
-      _showToast('Failed to update motion');
+      _showToast('Error: $e');
     }
   }
 
-  Future<void> _moderateArgument(String argId, String status) async {
+  Future<void> _launchDebate() async {
+    final topic = _debateTopicController.text.trim();
+    if (topic.isEmpty) return;
     try {
-      final response = await http.put(
-        Uri.parse('$_baseUrl/debates/argument/$argId/moderate'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'status': status}),
+      final res = await http.post(
+        Uri.parse('$_baseUrl/admin/debates'),
+        headers: _authHeaders,
+        body: json.encode({
+          'topicEn': topic,
+          'topicHi': topic,
+          'forSummaryEn': 'Arguments in favour of the motion.',
+          'forSummaryHi': 'प्रस्ताव के पक्ष में तर्क।',
+          'againstSummaryEn': 'Arguments against the motion.',
+          'againstSummaryHi': 'प्रस्ताव के विरुद्ध तर्क।',
+          'isActive': true,
+        }),
       );
-      if (response.statusCode == 200) {
-        _showToast('Argument moderated: $status');
-        _addLog("[MODERATION] Set status of $argId to $status");
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        _showToast('Debate launched!');
+        _addLog("[DEBATE] Launched: \"$topic\"");
+        _debateTopicController.clear();
         _fetchDebates();
         widget.onDataChanged();
+      } else {
+        _showToast('Failed: ${res.statusCode}');
       }
     } catch (e) {
-      _showToast('Failed to moderate argument');
+      _showToast('Error: $e');
+    }
+  }
+
+  Future<void> _toggleDebateActive(String id, bool currentlyActive) async {
+    try {
+      final res = await http.patch(
+        Uri.parse('$_baseUrl/admin/debates/$id'),
+        headers: _authHeaders,
+        body: json.encode({'isActive': !currentlyActive}),
+      );
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        _showToast(currentlyActive ? 'Debate deactivated' : 'Debate activated');
+        _fetchDebates();
+      }
+    } catch (e) {
+      _showToast('Error: $e');
     }
   }
 
@@ -362,36 +302,31 @@ class _AdminScreenState extends State<AdminScreen>
                 color: SwarajColors.navy,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Icon(
-                Icons.shield,
-                size: 14,
-                color: SwarajColors.saffron,
-              ),
+              child: const Icon(Icons.shield, size: 14, color: SwarajColors.saffron),
             ),
             const SizedBox(width: 8),
-            Text(
-              'SWARAJ ADMIN',
-              style: SwarajTypography.headline(
-                  fontSize: 18, fontWeight: FontWeight.w800),
-            ),
+            Text('SWARAJ ADMIN',
+                style: SwarajTypography.headline(fontSize: 18, fontWeight: FontWeight.w800)),
           ],
         ),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              border: Border.all(color: SwarajColors.saffron),
-              borderRadius: BorderRadius.circular(20),
+          if (_adminToken != null)
+            Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                border: Border.all(color: SwarajColors.saffron),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text('PRIVILEGED',
+                  style: SwarajTypography.mono(
+                      fontSize: 8, color: SwarajColors.saffron, fontWeight: FontWeight.bold)),
+            )
+          else
+            TextButton(
+              onPressed: _loginWithGoogle,
+              child: Text('LOGIN', style: SwarajTypography.mono(fontSize: 11, color: SwarajColors.saffron)),
             ),
-            child: Text(
-              '🛡️ PRIVILEGED',
-              style: SwarajTypography.mono(
-                  fontSize: 8,
-                  color: SwarajColors.saffron,
-                  fontWeight: FontWeight.bold),
-            ),
-          ),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -400,23 +335,22 @@ class _AdminScreenState extends State<AdminScreen>
           unselectedLabelColor: SwarajColors.slate,
           indicatorColor: SwarajColors.saffron,
           tabs: const [
-            Tab(text: '📊 Dashboard'),
-            Tab(text: '👥 Users'),
-            Tab(text: '📚 Curriculum'),
-            Tab(text: '🗳️ Debate Moderation'),
-            Tab(text: '⚙️ Logs'),
+            Tab(text: 'Dashboard'),
+            Tab(text: 'Students'),
+            Tab(text: 'Modules'),
+            Tab(text: 'Debates'),
+            Tab(text: 'Logs'),
           ],
         ),
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: SwarajColors.saffron))
+          ? const Center(child: CircularProgressIndicator(color: SwarajColors.saffron))
           : TabBarView(
               controller: _tabController,
               children: [
                 _buildDashboardTab(),
-                _buildUsersTab(),
-                _buildCurriculumTab(),
+                _buildStudentsTab(),
+                _buildModulesTab(),
                 _buildDebatesTab(),
                 _buildLogsTab(),
               ],
@@ -431,83 +365,29 @@ class _AdminScreenState extends State<AdminScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Platform Statistics',
-              style: SwarajTypography.headline(
-                  fontSize: 22, fontWeight: FontWeight.w800)),
+              style: SwarajTypography.headline(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(
-                  child: _buildStatCard(
-                      _totalUsers.toString(), 'ACTIVE CITIZENS')),
+              Expanded(child: _buildStatCard(_totalUsers.toString(), 'TOTAL USERS')),
               const SizedBox(width: 10),
-              Expanded(
-                  child: _buildStatCard(
-                      _totalPoints.toLocaleString(), 'TOTAL POINTS')),
+              Expanded(child: _buildStatCard(_activeUsers.toString(), 'ACTIVE (30D)')),
               const SizedBox(width: 10),
-              Expanded(
-                  child: _buildStatCard(
-                      _avgIQ.toStringAsFixed(1), 'AVG POLITICAL IQ')),
+              Expanded(child: _buildStatCard(_avgIQ.toStringAsFixed(1), 'AVG IQ')),
+              const SizedBox(width: 10),
+              Expanded(child: _buildStatCard(_totalModules.toString(), 'MODULES')),
             ],
           ),
           const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border:
-                  Border.all(color: SwarajColors.navy.withValues(alpha: 0.08)),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Weekly Activity Analytics',
-                  style: SwarajTypography.headline(
-                      fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  height: 120,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      _buildBar(45, 'MON', false),
-                      _buildBar(80, 'TUE', false),
-                      _buildBar(60, 'WED', false),
-                      _buildBar(110, 'TODAY', true),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBar(double height, String label, bool isToday) {
-    return Expanded(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Container(
-            height: height,
-            width: 32,
-            decoration: BoxDecoration(
-              color: isToday ? SwarajColors.saffron : SwarajColors.navy,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(4)),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: SwarajTypography.mono(
-              fontSize: 8,
-              fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-              color: isToday ? SwarajColors.saffron : SwarajColors.slate,
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton(
+              onPressed: _fetchDashboardMetrics,
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: SwarajColors.navy, foregroundColor: Colors.white),
+              child: Text('REFRESH ANALYTICS',
+                  style: SwarajTypography.mono(fontSize: 12, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -526,264 +406,181 @@ class _AdminScreenState extends State<AdminScreen>
       child: Column(
         children: [
           Text(val,
-              style: SwarajTypography.headline(
-                  fontSize: 20, fontWeight: FontWeight.w800)),
+              style: SwarajTypography.headline(fontSize: 20, fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: SwarajTypography.mono(
-                fontSize: 7,
-                color: SwarajColors.slateLight,
-                fontWeight: FontWeight.bold),
-          ),
+          Text(label,
+              textAlign: TextAlign.center,
+              style: SwarajTypography.mono(
+                  fontSize: 7, color: SwarajColors.slateLight, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
-  Widget _buildUsersTab() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _users.length,
-      itemBuilder: (context, idx) {
-        final u = _users[idx];
-        return Card(
-          color: Colors.white,
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(color: SwarajColors.navy.withValues(alpha: 0.08)),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(u['name'] ?? '',
-                        style: SwarajTypography.headline(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: SwarajColors.navy),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        u['role'] ?? 'Citizen',
-                        style: SwarajTypography.mono(
-                            fontSize: 8, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(u['school'] ?? '',
-                    style: SwarajTypography.body(
-                        fontSize: 12, color: SwarajColors.slate)),
-                Text(u['phone'] ?? '',
-                    style: SwarajTypography.mono(
-                        fontSize: 10, color: SwarajColors.saffron)),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Points: ${u['points']}',
-                        style: SwarajTypography.mono(
-                            fontSize: 12, fontWeight: FontWeight.bold)),
-                    Text('Streak: 🔥 ${u['streak']}',
-                        style: SwarajTypography.mono(fontSize: 12)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => _adjustPoints(u['phone']),
-                        style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: SwarajColors.navy)),
-                        child: Text('✏️ POINTS',
-                            style: SwarajTypography.mono(
-                                fontSize: 10, color: SwarajColors.navy)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () =>
-                            _promoteRole(u['phone'], u['role'] ?? 'Citizen'),
-                        style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: SwarajColors.navy)),
-                        child: Text('🎖️ ROLE',
-                            style: SwarajTypography.mono(
-                                fontSize: 10, color: SwarajColors.navy)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => _suspendUser(u['phone']),
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                SwarajColors.error.withValues(alpha: 0.1),
-                            elevation: 0),
-                        child: Text('✖ BAN',
-                            style: SwarajTypography.mono(
-                                fontSize: 10, color: SwarajColors.error)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+  Widget _buildStudentsTab() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: SizedBox(
+            width: double.infinity,
+            height: 40,
+            child: OutlinedButton(
+              onPressed: _fetchStudents,
+              child: Text('LOAD / REFRESH STUDENTS',
+                  style: SwarajTypography.mono(fontSize: 11, color: SwarajColors.navy)),
             ),
           ),
-        );
-      },
+        ),
+        Expanded(
+          child: _students.isEmpty
+              ? const Center(child: Text('No students loaded. Tap refresh.'))
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _students.length,
+                  itemBuilder: (context, idx) {
+                    final u = _students[idx];
+                    final school = u['school'] as Map<String, dynamic>?;
+                    return Card(
+                      color: Colors.white,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(color: SwarajColors.navy.withValues(alpha: 0.08)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(u['name'] as String? ?? '(no name)',
+                                      style: SwarajTypography.headline(
+                                          fontSize: 15, fontWeight: FontWeight.bold)),
+                                ),
+                                Text('IQ: ${u['politicalIq'] ?? 0}',
+                                    style: SwarajTypography.mono(
+                                        fontSize: 11,
+                                        color: SwarajColors.saffron,
+                                        fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(u['email'] as String? ?? '',
+                                style: SwarajTypography.body(fontSize: 12, color: SwarajColors.slate)),
+                            if (u['phone'] != null)
+                              Text(u['phone'] as String,
+                                  style: SwarajTypography.mono(fontSize: 10, color: SwarajColors.slate)),
+                            if (school != null)
+                              Text(school['name'] as String? ?? '',
+                                  style: SwarajTypography.body(fontSize: 11, color: SwarajColors.slate)),
+                            const SizedBox(height: 8),
+                            Text('Streak: ${u['streakCount'] ?? 0} days',
+                                style: SwarajTypography.mono(fontSize: 11)),
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: ElevatedButton(
+                                onPressed: () =>
+                                    _suspendStudent(u['id'] as String, u['name'] as String? ?? ''),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: SwarajColors.error.withValues(alpha: 0.1),
+                                    elevation: 0),
+                                child: Text('SUSPEND',
+                                    style: SwarajTypography.mono(fontSize: 10, color: SwarajColors.error)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
-  Widget _buildCurriculumTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Form(
-        key: _lessonFormKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Publish New Module',
-                style: SwarajTypography.headline(
-                    fontSize: 20, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _categoryController,
-              decoration: const InputDecoration(
-                  labelText: 'CATEGORY (e.g. FOUNDATIONS, YOUR RIGHTS)',
-                  filled: true,
-                  fillColor: Colors.white),
-              validator: (v) => v!.isEmpty ? 'Field required' : null,
+  Widget _buildModulesTab() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: SizedBox(
+            width: double.infinity,
+            height: 40,
+            child: OutlinedButton(
+              onPressed: _fetchModules,
+              child: Text('LOAD / REFRESH MODULES',
+                  style: SwarajTypography.mono(fontSize: 11, color: SwarajColors.navy)),
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                  labelText: 'MODULE TITLE',
-                  filled: true,
-                  fillColor: Colors.white),
-              validator: (v) => v!.isEmpty ? 'Field required' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _descController,
-              decoration: const InputDecoration(
-                  labelText: 'DESCRIPTION',
-                  filled: true,
-                  fillColor: Colors.white),
-              maxLines: 3,
-              validator: (v) => v!.isEmpty ? 'Field required' : null,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _totalController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                        labelText: 'TOTAL LESSONS',
-                        filled: true,
-                        fillColor: Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextFormField(
-                    controller: _completedController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                        labelText: 'COMPLETED COUNT',
-                        filled: true,
-                        fillColor: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _submitNewLesson,
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: SwarajColors.navy,
-                    foregroundColor: Colors.white),
-                child: Text('PUBLISH MODULE',
-                    style: SwarajTypography.mono(
-                        fontSize: 12, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            const SizedBox(height: 32),
-            Text('Active Modules Catalog',
-                style: SwarajTypography.headline(
-                    fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            if (_lessons.isEmpty)
-              const Center(child: Text('No active curriculum modules.'))
-            else
-              ..._lessons.map((m) => Card(
-                    color: Colors.white,
-                    margin: const EdgeInsets.only(bottom: 8),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(
-                          color: SwarajColors.navy.withValues(alpha: 0.08)),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: ListTile(
-                      title: Text(m['title'] ?? '',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text(m['desc'] ?? ''),
-                      trailing: Text(
-                        '${m['completedCount']}/${m['totalLessons']}',
-                        style: SwarajTypography.mono(
-                            color: SwarajColors.saffron,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  )),
-          ],
+          ),
         ),
-      ),
+        Expanded(
+          child: _modules.isEmpty
+              ? const Center(child: Text('No modules loaded. Tap refresh.'))
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _modules.length,
+                  itemBuilder: (ctx, idx) {
+                    final m = _modules[idx];
+                    final lessons = (m['lessons'] as List<dynamic>?)?.length ?? 0;
+                    return Card(
+                      color: Colors.white,
+                      margin: const EdgeInsets.only(bottom: 8),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(color: SwarajColors.navy.withValues(alpha: 0.08)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ListTile(
+                        leading: Container(
+                          width: 32,
+                          height: 32,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: SwarajColors.navy,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text('${m['order'] ?? idx + 1}',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                        title: Text(m['titleEn'] as String? ?? '',
+                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(m['descriptionEn'] as String? ?? '',
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        trailing: Text('$lessons lessons',
+                            style: SwarajTypography.mono(
+                                fontSize: 10, color: SwarajColors.saffron)),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
   Widget _buildDebatesTab() {
-    final pendingArgs = (_debates['arguments'] as List<dynamic>?)
-            ?.where((a) => a['status'] == 'pending')
-            .toList() ??
-        [];
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Update Weekly Motion',
-              style: SwarajTypography.headline(
-                  fontSize: 18, fontWeight: FontWeight.bold)),
+          Text('Launch New Debate',
+              style: SwarajTypography.headline(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: TextField(
-                  controller: _motionController,
+                  controller: _debateTopicController,
                   decoration: const InputDecoration(
-                    hintText: 'Enter new debate topic...',
+                    hintText: 'Enter debate topic in English...',
                     filled: true,
                     fillColor: Colors.white,
                   ),
@@ -793,96 +590,82 @@ class _AdminScreenState extends State<AdminScreen>
               SizedBox(
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: _updateWeeklyMotion,
+                  onPressed: _launchDebate,
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: SwarajColors.navy,
-                      foregroundColor: Colors.white),
+                      backgroundColor: SwarajColors.navy, foregroundColor: Colors.white),
                   child: Text('LAUNCH',
-                      style: SwarajTypography.mono(
-                          fontSize: 11, fontWeight: FontWeight.bold)),
+                      style: SwarajTypography.mono(fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 32),
-          Text('Flagged Arguments Queue',
-              style: SwarajTypography.headline(
-                  fontSize: 18, fontWeight: FontWeight.bold)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('All Debates',
+                  style: SwarajTypography.headline(fontSize: 18, fontWeight: FontWeight.bold)),
+              TextButton(
+                onPressed: _fetchDebates,
+                child: Text('REFRESH',
+                    style: SwarajTypography.mono(fontSize: 11, color: SwarajColors.saffron)),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
-          if (pendingArgs.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: Text('No pending arguments in queue.')),
-            )
+          if (_debates.isEmpty)
+            const Center(child: Text('No debates loaded.'))
           else
-            ...pendingArgs.map((a) => Card(
-                  color: Colors.white,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    side: BorderSide(
-                        color: SwarajColors.navy.withValues(alpha: 0.08)),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            ..._debates.map((d) {
+              final isActive = d['isActive'] as bool? ?? false;
+              return Card(
+                color: Colors.white,
+                margin: const EdgeInsets.only(bottom: 12),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  side: BorderSide(
+                      color: isActive
+                          ? SwarajColors.saffron
+                          : SwarajColors.navy.withValues(alpha: 0.08)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(a['name'] ?? '',
-                                style: SwarajTypography.headline(
-                                    fontSize: 14, fontWeight: FontWeight.bold)),
-                            Text(a['time'] ?? '',
-                                style: SwarajTypography.mono(
-                                    fontSize: 8,
-                                    color: SwarajColors.slateLight)),
+                            if (isActive)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                margin: const EdgeInsets.only(bottom: 6),
+                                decoration: BoxDecoration(
+                                  color: SwarajColors.saffron,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text('ACTIVE',
+                                    style: SwarajTypography.mono(
+                                        fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
+                              ),
+                            Text(d['topicEn'] as String? ?? '',
+                                style: SwarajTypography.body(fontSize: 14, fontWeight: FontWeight.bold)),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(a['text'] ?? '',
-                            style: SwarajTypography.body(
-                                fontSize: 13, color: SwarajColors.slate)),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () =>
-                                    _moderateArgument(a['id'], 'approved'),
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor: SwarajColors.success,
-                                    foregroundColor: Colors.white,
-                                    elevation: 0),
-                                child: Text('APPROVE',
-                                    style: SwarajTypography.mono(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold)),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () =>
-                                    _moderateArgument(a['id'], 'deleted'),
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor: SwarajColors.error,
-                                    foregroundColor: Colors.white,
-                                    elevation: 0),
-                                child: Text('REJECT',
-                                    style: SwarajTypography.mono(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold)),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                      ),
+                      TextButton(
+                        onPressed: () => _toggleDebateActive(d['id'] as String, isActive),
+                        child: Text(isActive ? 'DEACTIVATE' : 'ACTIVATE',
+                            style: SwarajTypography.mono(
+                                fontSize: 10,
+                                color: isActive ? SwarajColors.error : SwarajColors.navy)),
+                      ),
+                    ],
                   ),
-                )),
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -900,39 +683,14 @@ class _AdminScreenState extends State<AdminScreen>
           if (log.contains("NOTICE")) col = SwarajColors.saffron;
           if (log.contains("ERROR")) col = Colors.red;
           if (log.contains("SYSTEM")) col = Colors.grey;
-
+          if (log.contains("AUTH")) col = Colors.cyan;
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Text(
-              log,
-              style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 11,
-                color: col,
-              ),
-            ),
+            child: Text(log,
+                style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: col)),
           );
         },
       ),
     );
-  }
-}
-
-extension NumberFormatting on int {
-  String toLocaleString() {
-    final str = toString();
-    if (str.length <= 3) return str;
-    final buffer = StringBuffer();
-    int count = 0;
-    for (int i = str.length - 1; i >= 0; i--) {
-      if (count == 3 && i >= 0) {
-        buffer.write(',');
-      } else if (count > 3 && (count - 3) % 2 == 0 && i >= 0) {
-        buffer.write(',');
-      }
-      buffer.write(str[i]);
-      count++;
-    }
-    return buffer.toString().split('').reversed.join('');
   }
 }

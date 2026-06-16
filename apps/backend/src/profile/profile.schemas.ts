@@ -8,3 +8,11 @@ export const updateProfileSchema = z.object({
 });
 
 export type UpdateProfileBody = z.infer<typeof updateProfileSchema>;
+
+export const createSchoolSchema = z.object({
+  name: z.string().min(3).max(200),
+  district: z.string().min(2).max(100),
+  state: z.string().min(2).max(100).optional().default("Rajasthan"),
+});
+
+export type CreateSchoolBody = z.infer<typeof createSchoolSchema>;

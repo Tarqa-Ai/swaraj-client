@@ -20,7 +20,6 @@ import 'features/ai_assistant/ai_chat_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/cert_locked_screen.dart';
 import 'features/profile/certificate_detail_screen.dart';
-import 'features/admin/admin_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,7 +40,18 @@ void main() async {
       url: supabaseUrl,
       anonKey: supabaseAnonKey,
     );
-    runApp(const ProviderScope(child: SwarajApp()));
+
+    // Restore persisted auth token (custom JWT or dev-bypass) so the user stays logged in.
+    final sessionStore = SessionStore();
+    final savedToken = await sessionStore.getToken();
+    String startRoute = '/onboarding';
+    if (savedToken != null && savedToken.isNotEmpty) {
+      ApiClient.setDevToken(savedToken);
+      // Go straight to dashboard — profile data loads on first API call
+      startRoute = '/dashboard';
+    }
+
+    runApp(ProviderScope(child: SwarajApp(initialRoute: startRoute)));
   } catch (e, stackTrace) {
     debugPrint('Initialization error: $e');
     debugPrint('StackTrace: $stackTrace');
@@ -80,7 +90,8 @@ void main() async {
 }
 
 class SwarajApp extends StatelessWidget {
-  const SwarajApp({super.key});
+  const SwarajApp({super.key, this.initialRoute = '/onboarding'});
+  final String initialRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +102,7 @@ class SwarajApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: SwarajColors.cream,
       ),
-      initialRoute: '/onboarding',
+      initialRoute: initialRoute,
       onGenerateRoute: (RouteSettings settings) {
         switch (settings.name) {
           case '/onboarding':
@@ -135,14 +146,6 @@ class SwarajApp extends StatelessWidget {
                 builder: (_) => const CertificateDetailScreen());
           case '/ai-chat':
             return MaterialPageRoute(builder: (_) => const AIChatScreen());
-          case '/admin':
-            return MaterialPageRoute(
-              builder: (_) => AdminScreen(
-                onDataChanged: () {
-                  // Dynamic rebuild notification callback
-                },
-              ),
-            );
           default:
             return MaterialPageRoute(builder: (_) => const OnboardingScreen());
         }

@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { Language } from "@prisma/client";
 import { getPoliticalLevel } from "@swaraj/shared-utils";
 import { PrismaService } from "../prisma/prisma.service";
-import type { UpdateProfileBody } from "./profile.schemas";
+import type { UpdateProfileBody, CreateSchoolBody } from "./profile.schemas";
 
 @Injectable()
 export class ProfileService {
@@ -44,6 +44,31 @@ export class ProfileService {
     return this.prisma.school.findMany({
       where: { deletedAt: null },
       orderBy: [{ district: "asc" }, { name: "asc" }]
+    });
+  }
+
+  async createSchool(body: CreateSchoolBody) {
+    // Return existing school if same name + district already exists
+    const existing = await this.prisma.school.findFirst({
+      where: {
+        name: { equals: body.name.trim(), mode: "insensitive" },
+        district: { equals: body.district.trim(), mode: "insensitive" },
+        deletedAt: null,
+      },
+    });
+    if (existing) return existing;
+
+    const slug = body.name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 6) || "inst";
+    const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const code = `${slug}${suffix}`;
+
+    return this.prisma.school.create({
+      data: {
+        name: body.name.trim(),
+        district: body.district.trim(),
+        state: body.state ?? "Rajasthan",
+        code,
+      },
     });
   }
 }

@@ -35,9 +35,7 @@ jobs:
         working-directory: apps/mobile
         run: |
           flutter build appbundle --release \
-            --dart-define=API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
-            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+            --dart-define=API_URL=${{ secrets.API_URL }}
 
       - name: Sign AAB Artifact
         if: env.SIGNING_KEY_BASE64 != ''

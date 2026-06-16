@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Patch, UseGuards, UsePipes } from "@nestjs/common";
+import { Body, Controller, Get, Patch, Post, UseGuards } from "@nestjs/common";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import type { AuthenticatedUser } from "../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe";
-import { updateProfileSchema } from "./profile.schemas";
-import type { UpdateProfileBody } from "./profile.schemas";
+import { updateProfileSchema, createSchoolSchema } from "./profile.schemas";
+import type { UpdateProfileBody, CreateSchoolBody } from "./profile.schemas";
 import { ProfileService } from "./profile.service";
 
 @Controller()
@@ -26,5 +26,11 @@ export class ProfileController {
   @Get("schools")
   schools() {
     return this.profile.schools();
+  }
+
+  @Post("schools")
+  @UseGuards(JwtAuthGuard)
+  createSchool(@Body(new ZodValidationPipe(createSchoolSchema)) body: CreateSchoolBody) {
+    return this.profile.createSchool(body);
   }
 }
