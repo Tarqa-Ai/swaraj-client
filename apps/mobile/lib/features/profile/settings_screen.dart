@@ -242,7 +242,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                         .get('/me') as Map<String, dynamic>;
                                     await SwarajCacheService.saveUserProfile(
                                         updated);
-                                    if (!mounted) return;
+                                    if (!ctx.mounted) return;
                                     Navigator.pop(ctx);
                                     _showMockToast('Profile updated successfully.',
                                         SwarajColors.success);

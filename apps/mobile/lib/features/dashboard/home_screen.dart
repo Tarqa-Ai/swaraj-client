@@ -226,9 +226,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: SwarajColors.navy,
-                  borderRadius: const BorderRadius.only(
+                  borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(24),
                     bottomRight: Radius.circular(24),
                   ),
@@ -270,7 +270,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             child: Column(
                               children: [
-                                Text('🔥', style: const TextStyle(fontSize: 20)),
+                                const Text('🔥', style: TextStyle(fontSize: 20)),
                                 Text(
                                   '$_streak',
                                   style: SwarajTypography.headline(

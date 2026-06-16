@@ -161,9 +161,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: SwarajColors.navy,
-                  borderRadius: const BorderRadius.only(
+                  borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(24),
                     bottomRight: Radius.circular(24),
                   ),
