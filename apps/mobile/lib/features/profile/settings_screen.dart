@@ -685,7 +685,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Have questions about constitutional modules, certification delivery, or playstore policies? Direct emails can be sent to support@swaraj-learning.org.',
+                  'Have questions about constitutional modules, certification delivery, or playstore policies? Direct emails can be sent to swaraj.org.in@gmail.com.',
                   style: SwarajTypography.body(fontSize: 13),
                 ),
                 const SizedBox(height: 16),

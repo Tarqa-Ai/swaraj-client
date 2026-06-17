@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(flutter devices)",
-      "Bash(flutter run -d emulator-5554)"
+      "Bash(flutter run -d emulator-5554)",
+      "Bash(flutter build ios --release --no-codesign --dart-define=API_URL=https://swaraj-backend-dkgn.onrender.com/api)"
     ]
   }
 }

@@ -858,7 +858,7 @@ export default function Home() {
           <div className="flex flex-col gap-3 font-dm-sans text-sm font-medium text-slate-500">
             <a href="#" className="hover:text-slate-900 transition">Curriculum</a>
             <a href="#" className="hover:text-slate-900 transition">For Schools</a>
-            <a href="mailto:info@swaraj.org.in" className="hover:text-slate-900 transition">Contact Support</a>
+            <a href="mailto:swaraj.org.in@gmail.com" className="hover:text-slate-900 transition">Contact Support</a>
           </div>
 
         </div>
